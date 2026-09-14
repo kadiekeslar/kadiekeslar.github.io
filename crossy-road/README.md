@@ -2,7 +2,7 @@
 
 ## About the Game
 
-412 Crossy Road is a Pittsburgh-themed version of Crossy Road where you try to move your chicken as far as possible without getting hit by hazards. I made it different from the original by adding a Pittsburgh theme and letting the chicken wear Steelers, Pirates, or Penguins jerseys.
+412 Crossy Road is a Pittsburgh themed version of Crossy Road where you try to move your chicken as far as possible without getting hit by hazards. I made it different from the original by adding a Pittsburgh theme and letting the chicken wear Steelers, Pirates, or Penguins jerseys.
 
 ## How to Play
 
