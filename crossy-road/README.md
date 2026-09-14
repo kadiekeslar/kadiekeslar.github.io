@@ -30,7 +30,3 @@ I used **Kiro** during the in-class portion of the assignment. I also used **Cha
 ## Overall Strategy
 
 My strategy was to get the main Crossy Road gameplay working first before spending too much time on customization. I focused on movement, hazards, collision detection, scoring, and restarting the game. Once the basic game was playable, I worked on making it more unique by adding a Pittsburgh theme and Pittsburgh sports jersey options for the chicken.
-
-## Known Issues / Unfinished Features
-
-There are currently no major known issues or unfinished features.
