@@ -537,7 +537,7 @@
               id="location"
               type="text"
               autocomplete="street-address"
-              placeholder="5000 Forbes Ave, Pittsburgh, PA"
+              placeholder="Street address, landmark, neighborhood, city, or ZIP"
             />
             <button id="useLocationBtn" class="location-button" type="button">Use my location</button>
           </div>
@@ -642,7 +642,10 @@
     const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
     const OPEN_METEO_GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
     const WEATHER_URL = "https://api.open-meteo.com/v1/forecast";
-    const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+    const OVERPASS_ENDPOINTS = [
+      "https://overpass-api.de/api/interpreter",
+      "https://overpass.private.coffee/api/interpreter"
+    ];
 
     let browserLocation = null;
     const geocodeCache = new Map();
@@ -980,31 +983,111 @@
       `;
     }
 
-    async function getNearbyPlaces(lat, lon, miles, activityChoice) {
-      const radiusMeters = Math.max(1, Math.round(miles * 1609.344));
-      const statements = buildCategoryStatements(activityChoice, radiusMeters, lat, lon);
+    async function requestOverpass(query) {
+      let lastError = null;
 
-      const query = `
-        [out:json][timeout:25];
-        (
-          ${statements}
-        );
-        out center 350;
-      `;
+      for (const endpoint of OVERPASS_ENDPOINTS) {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 22000);
 
-      const params = new URLSearchParams({ data: query });
+          try {
+            const body = new URLSearchParams({ data: query });
 
-      const data = await fetchJSON(
-        `${OVERPASS_URL}?${params.toString()}`,
-        {},
-        30000
-      );
+            const response = await fetch(endpoint, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+              },
+              body: body.toString(),
+              signal: controller.signal
+            });
 
-      if (!data || !Array.isArray(data.elements)) {
-        throw new Error("PLACES_DATA_MISSING");
+            if (!response.ok) {
+              throw new Error(`HTTP_${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (!data || !Array.isArray(data.elements)) {
+              throw new Error("PLACES_DATA_MISSING");
+            }
+
+            return data.elements;
+          } finally {
+            clearTimeout(timer);
+          }
+        } catch (error) {
+          lastError = error;
+        }
       }
 
-      return data.elements;
+      throw lastError || new Error("PLACES_SERVICE_UNAVAILABLE");
+    }
+
+    function searchRadii(maxMiles) {
+      // Start close to the user's address. Only expand the query when the
+      // smaller search does not provide enough candidates. This makes large
+      // distance searches much less likely to overload a public Overpass server.
+      const steps = [5, 10, 20, 35, 50, 75, 100];
+      const radii = steps.filter(value => value < maxMiles);
+      radii.push(maxMiles);
+
+      return [...new Set(radii.map(value => Math.max(0.5, value)))]
+        .sort((a, b) => a - b);
+    }
+
+    async function getNearbyPlaces(lat, lon, miles, activityChoice) {
+      const candidates = new Map();
+      const radii = searchRadii(miles);
+
+      for (const radiusMiles of radii) {
+        const radiusMeters = Math.max(
+          1,
+          Math.round(radiusMiles * 1609.344)
+        );
+
+        const statements = buildCategoryStatements(
+          activityChoice,
+          radiusMeters,
+          lat,
+          lon
+        );
+
+        const query = `
+          [out:json][timeout:20];
+          (
+            ${statements}
+          );
+          out center 180;
+        `;
+
+        let elements;
+
+        try {
+          elements = await requestOverpass(query);
+        } catch (error) {
+          // If one radius fails, try the next radius/server combination.
+          // Only report a service failure if every attempt fails.
+          if (candidates.size === 0 && radiusMiles === radii[radii.length - 1]) {
+            throw error;
+          }
+          continue;
+        }
+
+        for (const element of elements) {
+          const key = `${element.type || "item"}-${element.id || Math.random()}`;
+          candidates.set(key, element);
+        }
+
+        // We only display up to eight recommendations. Once we have a healthy
+        // candidate pool, there is no reason to run a more expensive larger query.
+        if (candidates.size >= 40) {
+          break;
+        }
+      }
+
+      return [...candidates.values()];
     }
 
     function getCoordinates(element) {
@@ -1414,7 +1497,7 @@
         try {
           rawPlaces = await getNearbyPlaces(location.lat, location.lon, miles, activityChoice);
         } catch (error) {
-          showMessage("The places service is unavailable right now. Try again in a moment.");
+          showMessage("I found your location, but the nearby-places service did not respond. Please try the search again.");
           return;
         }
 
