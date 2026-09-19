@@ -122,7 +122,7 @@
 
     .layout-3 {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 16px;
       margin-top: 16px;
     }
@@ -580,16 +580,6 @@
             <option value="either">Either</option>
             <option value="indoor">Indoor</option>
             <option value="outdoor">Outdoor</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="resultCount">Number of results</label>
-          <select id="resultCount">
-            <option value="5">5</option>
-            <option value="8" selected>8</option>
-            <option value="10">10</option>
-            <option value="12">12</option>
           </select>
         </div>
       </div>
@@ -1112,7 +1102,7 @@
       ].filter(Boolean);
 
       const parts = [streetLine, ...locality].filter(Boolean);
-      return parts.length ? parts.join(", ") : "Address not listed";
+      return parts.length ? parts.join(", ") : "";
     }
 
     function weatherIsBadForOutdoors(weather) {
@@ -1198,7 +1188,7 @@
 
       if (greatOutdoorWeather && place.setting === "Outdoor") score += 18;
 
-      if (place.address !== "Address not listed") score += 3;
+      if (place.address) score += 3;
       if (place.description) score += 2;
 
       return score;
@@ -1218,7 +1208,7 @@
       return true;
     }
 
-    function normalizePlaces(elements, userLat, userLon, settingChoice, maxMiles, weather, resultCount) {
+    function normalizePlaces(elements, userLat, userLon, settingChoice, maxMiles, weather) {
       const seen = new Set();
       const places = [];
 
@@ -1260,7 +1250,7 @@
         return a.distance - b.distance;
       });
 
-      return places.slice(0, resultCount);
+      return places.slice(0, 8);
     }
 
     function displayWeather(location, weather) {
@@ -1334,7 +1324,7 @@
           <p class="reason"><strong>Why this works:</strong> ${escapeHTML(place.reason)}</p>
 
           <div class="card-footer">
-            <div class="address">${escapeHTML(place.address)}</div>
+            ${place.address ? `<div class="address">${escapeHTML(place.address)}</div>` : `<div></div>`}
             <div class="links">
               ${websiteLink}
               <a href="${escapeAttribute(osmMapUrl(place))}" target="_blank" rel="noopener">Map</a>
@@ -1376,7 +1366,6 @@
       const miles = Number(document.getElementById("distance").value);
       const activityChoice = document.getElementById("activity").value;
       const settingChoice = document.getElementById("setting").value;
-      const resultCount = Number(document.getElementById("resultCount").value);
 
       document.getElementById("weatherSection").classList.add("hidden");
       document.getElementById("recommendationSection").classList.add("hidden");
@@ -1435,8 +1424,7 @@
           location.lon,
           settingChoice,
           miles,
-          weather,
-          resultCount
+          weather
         );
 
         displayRecommendations(places, miles);
