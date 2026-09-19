@@ -8,329 +8,339 @@
 
   <style>
     :root {
-      --bg: #f4f7fb;
-      --card: #ffffff;
-      --text: #172033;
-      --muted: #68738a;
-      --blue: #2563eb;
-      --blue-dark: #1d4ed8;
-      --line: #dfe5ef;
-      --soft-blue: #eff6ff;
-      --soft-purple: #f5f3ff;
-      --success: #087f5b;
-      --error-bg: #fff1f2;
-      --error-text: #be123c;
-      --shadow: 0 14px 40px rgba(26, 44, 78, 0.09);
+      --bg: #f6f1ea;
+      --bg-soft: #fbf8f4;
+      --card: #fffdf9;
+      --card-2: #f8f3ec;
+      --text: #2f2924;
+      --muted: #776c62;
+      --line: #e5ddd2;
+      --accent: #7a5c46;
+      --accent-dark: #654a37;
+      --accent-soft: #efe4d8;
+      --shadow: 0 14px 36px rgba(78, 58, 42, 0.08);
+      --error-bg: #fcf0ee;
+      --error-text: #9a3f35;
+      --info-bg: #f3f1ee;
+      --info-text: #5d554d;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
       min-height: 100vh;
-      font-family:
-        Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
         "Segoe UI", sans-serif;
       background:
-        radial-gradient(circle at 10% 0%, #dbeafe 0, transparent 28rem),
-        radial-gradient(circle at 95% 10%, #ede9fe 0, transparent 24rem),
-        var(--bg);
+        radial-gradient(circle at top left, rgba(255,255,255,0.65), transparent 28rem),
+        linear-gradient(180deg, #f7f2eb 0%, #f5efe8 38%, #f6f1ea 100%);
       color: var(--text);
     }
 
-    button,
-    input,
-    select {
+    button, input, select {
       font: inherit;
     }
 
+    .page {
+      width: min(1080px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 42px 0 52px;
+    }
+
     .hero {
-      padding: 56px 20px 38px;
+      padding: 28px 10px 26px;
       text-align: center;
     }
 
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      padding: 7px 11px;
-      margin-bottom: 15px;
-      border: 1px solid #c7d2fe;
+    .eyebrow {
+      display: inline-block;
+      padding: 6px 12px;
+      border: 1px solid var(--line);
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.7);
-      color: #4338ca;
-      font-size: 0.86rem;
-      font-weight: 700;
+      background: rgba(255, 253, 249, 0.85);
+      color: var(--muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
     }
 
     .hero h1 {
-      margin: 0;
-      font-size: clamp(2.25rem, 6vw, 4rem);
-      line-height: 1.03;
-      letter-spacing: -0.045em;
+      margin: 16px 0 10px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(2.3rem, 5.3vw, 4rem);
+      line-height: 1.04;
+      letter-spacing: -0.03em;
+      font-weight: 700;
     }
 
     .hero p {
-      max-width: 670px;
-      margin: 16px auto 0;
+      max-width: 620px;
+      margin: 0 auto;
       color: var(--muted);
-      font-size: 1.05rem;
+      font-size: 1rem;
       line-height: 1.6;
     }
 
-    .container {
-      width: min(1120px, calc(100% - 30px));
-      margin: 0 auto;
-      padding-bottom: 60px;
-    }
-
     .panel {
-      margin-bottom: 22px;
+      margin-bottom: 20px;
       padding: 24px;
-      border: 1px solid rgba(214, 222, 235, 0.9);
-      border-radius: 22px;
-      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: rgba(255, 253, 249, 0.95);
       box-shadow: var(--shadow);
       backdrop-filter: blur(8px);
     }
 
-    .panel-title-row {
+    .panel-header {
       display: flex;
-      align-items: end;
       justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 18px;
+      align-items: end;
+      gap: 12px;
+      margin-bottom: 16px;
     }
 
-    .panel h2 {
+    .panel-header h2 {
       margin: 0;
-      font-size: 1.55rem;
-      letter-spacing: -0.025em;
+      font-size: 1.32rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
     }
 
-    .section-note,
-    .helper {
+    .subtle {
+      margin: 4px 0 0;
       color: var(--muted);
-      font-size: 0.88rem;
+      font-size: 0.9rem;
       line-height: 1.45;
     }
 
-    .form-grid {
+    .layout {
       display: grid;
-      grid-template-columns: 1.3fr 0.7fr;
-      gap: 17px;
+      grid-template-columns: 1.25fr 0.75fr;
+      gap: 16px;
     }
 
-    .form-grid.three {
+    .layout-3 {
+      display: grid;
       grid-template-columns: repeat(3, 1fr);
-      margin-top: 17px;
+      gap: 16px;
+      margin-top: 16px;
     }
 
     .field label {
       display: block;
       margin-bottom: 7px;
-      font-size: 0.92rem;
-      font-weight: 750;
+      font-size: 0.9rem;
+      font-weight: 700;
     }
 
-    .input-wrap {
+    .input-row {
       display: flex;
-      gap: 8px;
+      gap: 10px;
     }
 
-    input,
-    select {
+    input, select {
       width: 100%;
       min-height: 48px;
-      padding: 0 13px;
-      border: 1px solid #cfd8e6;
-      border-radius: 12px;
-      outline: none;
-      background: #fff;
+      padding: 0 14px;
+      border: 1px solid #d8cec2;
+      border-radius: 14px;
+      background: #fffdfa;
       color: var(--text);
-      transition: border-color 0.15s, box-shadow 0.15s;
+      outline: none;
+      transition: border-color 0.16s ease, box-shadow 0.16s ease;
     }
 
-    input:focus,
-    select:focus {
-      border-color: #6d8ff5;
-      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.10);
+    input:focus, select:focus {
+      border-color: #a88a73;
+      box-shadow: 0 0 0 4px rgba(122, 92, 70, 0.08);
     }
 
     .location-button {
-      width: auto;
-      min-width: 118px;
+      flex: 0 0 auto;
+      min-width: 130px;
       min-height: 48px;
-      padding: 0 14px;
-      border: 1px solid #cbd5e1;
-      border-radius: 12px;
-      background: #fff;
-      color: #334155;
-      font-weight: 700;
+      padding: 0 15px;
+      border: 1px solid #d8cec2;
+      border-radius: 14px;
+      background: #f8f2eb;
+      color: var(--text);
+      font-weight: 600;
       cursor: pointer;
+      transition: background 0.16s ease, border-color 0.16s ease;
       white-space: nowrap;
     }
 
     .location-button:hover {
-      background: #f8fafc;
+      background: #f3e8db;
+      border-color: #cbb8a5;
     }
 
-    .helper {
-      margin-top: 7px;
+    .hint {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.35;
     }
 
     .primary-button {
       width: 100%;
       min-height: 52px;
-      margin-top: 21px;
+      margin-top: 18px;
       border: 0;
-      border-radius: 13px;
-      background: linear-gradient(135deg, #2563eb, #4f46e5);
+      border-radius: 16px;
+      background: linear-gradient(180deg, #82624c 0%, #735643 100%);
       color: #fff;
-      font-weight: 800;
+      font-weight: 700;
+      letter-spacing: 0.01em;
       cursor: pointer;
-      box-shadow: 0 9px 22px rgba(37, 99, 235, 0.23);
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 10px 22px rgba(101, 74, 55, 0.18);
+      transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
     }
 
     .primary-button:hover {
       transform: translateY(-1px);
-      box-shadow: 0 12px 26px rgba(37, 99, 235, 0.28);
+      box-shadow: 0 14px 26px rgba(101, 74, 55, 0.22);
+      background: linear-gradient(180deg, #7b5d48 0%, #694d3b 100%);
     }
 
     .primary-button:disabled {
+      opacity: 0.7;
       cursor: wait;
-      opacity: 0.62;
       transform: none;
     }
 
     .message {
-      margin-top: 15px;
-      padding: 13px 15px;
-      border-radius: 12px;
-      font-size: 0.94rem;
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-size: 0.92rem;
       line-height: 1.5;
     }
 
     .message.error {
-      border: 1px solid #fecdd3;
       background: var(--error-bg);
       color: var(--error-text);
+      border: 1px solid #f2d6d1;
     }
 
     .message.info {
-      border: 1px solid #bae6fd;
-      background: #f0f9ff;
-      color: #075985;
+      background: var(--info-bg);
+      color: var(--info-text);
+      border: 1px solid #e3dad0;
     }
 
-    .hidden {
-      display: none !important;
-    }
+    .hidden { display: none !important; }
 
-    .weather-heading {
+    .weather-top {
       display: flex;
       align-items: center;
-      gap: 15px;
+      gap: 14px;
+      margin-bottom: 18px;
     }
 
-    .weather-icon {
-      display: grid;
+    .weather-mark {
       width: 54px;
       height: 54px;
+      display: grid;
       place-items: center;
-      border-radius: 16px;
-      background: linear-gradient(135deg, #dbeafe, #eef2ff);
-      font-size: 1.8rem;
+      border-radius: 18px;
+      background: var(--accent-soft);
+      color: var(--accent-dark);
+      font-size: 1.45rem;
+      font-weight: 700;
+      border: 1px solid var(--line);
     }
 
     #weatherLocation {
-      margin: 5px 0 0;
+      margin: 4px 0 0;
       color: var(--muted);
-      font-size: 0.95rem;
+      font-size: 0.92rem;
     }
 
     .weather-grid {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
       gap: 12px;
-      margin-top: 19px;
     }
 
     .weather-stat {
-      min-width: 0;
       padding: 16px;
-      border: 1px solid #e5eaf2;
-      border-radius: 15px;
-      background: #f9fbfe;
+      border-radius: 16px;
+      border: 1px solid #ebe3d9;
+      background: var(--bg-soft);
     }
 
     .weather-stat span {
       display: block;
       color: var(--muted);
-      font-size: 0.82rem;
-      font-weight: 650;
+      font-size: 0.81rem;
+      font-weight: 600;
     }
 
     .weather-stat strong {
       display: block;
-      margin-top: 5px;
-      font-size: 1.25rem;
+      margin-top: 6px;
+      font-size: 1.22rem;
       letter-spacing: -0.02em;
+      font-weight: 700;
       overflow-wrap: anywhere;
     }
 
-    .recommendations-grid {
+    .results-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 15px;
     }
 
-    .place-card {
-      position: relative;
-      overflow: hidden;
-      padding: 20px;
-      border: 1px solid #e1e7f0;
+    .card {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 18px;
       border-radius: 18px;
-      background: #fff;
+      border: 1px solid #ece2d8;
+      background: #fffdfa;
       transition: transform 0.16s ease, box-shadow 0.16s ease;
     }
 
-    .place-card:hover {
+    .card:hover {
       transform: translateY(-2px);
-      box-shadow: 0 12px 28px rgba(24, 39, 75, 0.10);
+      box-shadow: 0 12px 24px rgba(65, 48, 36, 0.08);
     }
 
-    .place-number {
+    .card-top {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .card h3 {
+      margin: 0;
+      font-size: 1.08rem;
+      line-height: 1.35;
+      letter-spacing: -0.01em;
+    }
+
+    .rank {
+      flex: 0 0 auto;
+      min-width: 30px;
+      height: 30px;
       display: grid;
-      position: absolute;
-      top: 17px;
-      right: 17px;
-      width: 31px;
-      height: 31px;
       place-items: center;
       border-radius: 10px;
-      background: var(--soft-blue);
-      color: var(--blue);
-      font-size: 0.84rem;
-      font-weight: 850;
-    }
-
-    .place-card h3 {
-      max-width: calc(100% - 45px);
-      margin: 0;
-      font-size: 1.18rem;
-      line-height: 1.3;
-      letter-spacing: -0.02em;
+      background: var(--accent-soft);
+      color: var(--accent-dark);
+      font-size: 0.83rem;
+      font-weight: 700;
+      border: 1px solid #e2d4c3;
     }
 
     .chips {
       display: flex;
       flex-wrap: wrap;
       gap: 7px;
-      margin: 12px 0;
     }
 
     .chip {
@@ -338,86 +348,90 @@
       align-items: center;
       padding: 5px 9px;
       border-radius: 999px;
-      background: #f1f5f9;
-      color: #475569;
-      font-size: 0.78rem;
-      font-weight: 700;
+      background: #f5eee6;
+      color: #5e4f43;
+      font-size: 0.77rem;
+      font-weight: 600;
+      border: 1px solid #eadfD4;
     }
 
-    .chip.blue {
-      background: #eff6ff;
-      color: #1d4ed8;
-    }
-
-    .chip.purple {
-      background: #f5f3ff;
-      color: #6d28d9;
-    }
-
-    .place-card p {
-      margin: 10px 0;
-      color: #465269;
-      font-size: 0.91rem;
-      line-height: 1.55;
-    }
-
-    .place-card .reason {
+    .reason {
+      margin: 0;
       padding: 11px 12px;
-      border-radius: 12px;
-      background: #f8fafc;
-      color: #334155;
+      border-radius: 14px;
+      background: #f8f3ed;
+      color: #4f473f;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      border: 1px solid #eee5dc;
     }
 
-    .place-footer {
+    .description {
+      margin: 0;
+      color: #5c534c;
+      font-size: 0.89rem;
+      line-height: 1.5;
+    }
+
+    .card-footer {
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      gap: 10px;
-      margin-top: 15px;
-      padding-top: 14px;
-      border-top: 1px solid #edf0f5;
-    }
-
-    .place-footer a {
-      color: var(--blue);
-      font-size: 0.86rem;
-      font-weight: 750;
-      text-decoration: none;
-    }
-
-    .place-footer a:hover {
-      text-decoration: underline;
+      align-items: start;
+      gap: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #efe6dc;
+      margin-top: auto;
     }
 
     .address {
       color: var(--muted);
-      font-size: 0.83rem;
+      font-size: 0.82rem;
       line-height: 1.4;
+      max-width: 72%;
+    }
+
+    .links {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .links a {
+      color: var(--accent-dark);
+      text-decoration: none;
+      font-size: 0.83rem;
+      font-weight: 600;
+    }
+
+    .links a:hover {
+      text-decoration: underline;
     }
 
     .empty-state {
-      padding: 34px 20px;
-      border: 1px dashed #cfd8e6;
-      border-radius: 16px;
+      grid-column: 1 / -1;
+      padding: 30px 22px;
+      border: 1px dashed #d9cfc2;
+      border-radius: 18px;
+      background: #fcf9f5;
       text-align: center;
       color: var(--muted);
-      background: #fbfcfe;
+      line-height: 1.55;
     }
 
     .empty-state strong {
       display: block;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       color: var(--text);
-      font-size: 1.05rem;
+      font-size: 1rem;
     }
 
     .footer {
-      max-width: 900px;
-      margin: 28px auto 0;
-      color: #7c879b;
+      margin-top: 26px;
       text-align: center;
+      color: var(--muted);
       font-size: 0.78rem;
-      line-height: 1.55;
+      line-height: 1.6;
     }
 
     .footer a {
@@ -433,39 +447,42 @@
       border-top-color: #fff;
       border-radius: 50%;
       vertical-align: -2px;
-      animation: spin 0.7s linear infinite;
+      animation: spin 0.75s linear infinite;
     }
 
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
 
-    @media (max-width: 850px) {
-      .form-grid,
-      .form-grid.three {
+    @media (max-width: 900px) {
+      .layout,
+      .layout-3,
+      .weather-grid,
+      .results-grid {
         grid-template-columns: 1fr;
       }
 
       .weather-grid {
         grid-template-columns: repeat(2, 1fr);
       }
-
-      .recommendations-grid {
-        grid-template-columns: 1fr;
-      }
     }
 
-    @media (max-width: 560px) {
-      .hero {
-        padding-top: 38px;
+    @media (max-width: 620px) {
+      .page {
+        width: min(100% - 18px, 1080px);
+        padding-top: 22px;
       }
 
       .panel {
         padding: 18px;
-        border-radius: 17px;
+        border-radius: 18px;
       }
 
-      .input-wrap {
+      .hero {
+        padding: 18px 4px 20px;
+      }
+
+      .input-row {
         flex-direction: column;
       }
 
@@ -480,45 +497,49 @@
       .weather-stat:last-child {
         grid-column: 1 / -1;
       }
+
+      .card-footer {
+        flex-direction: column;
+      }
+
+      .address {
+        max-width: 100%;
+      }
+
+      .links {
+        text-align: left;
+      }
     }
   </style>
 </head>
 
 <body>
-  <header class="hero">
-    <div class="hero-badge">☀️ Live weather + nearby places</div>
-    <h1>What Should I Do Today?</h1>
-    <p>
-      Tell me where you're starting, how far you want to go, and what sounds fun.
-      I'll use the current weather to suggest nearby places.
-    </p>
-  </header>
+  <main class="page">
+    <header class="hero">
+      <div class="eyebrow">Activity recommendations</div>
+      <h1>What Should I Do Today?</h1>
+      <p>Choose a starting point, travel distance, and activity type to get recommendations based on the current weather.</p>
+    </header>
 
-  <main class="container">
     <section class="panel">
-      <div class="panel-title-row">
+      <div class="panel-header">
         <div>
-          <h2>Plan your outing</h2>
-          <div class="section-note">Search by a full address, landmark, neighborhood, city, or ZIP code.</div>
+          <h2>Search</h2>
+          <p class="subtle">Enter a street address, landmark, neighborhood, city, or ZIP code.</p>
         </div>
       </div>
 
-      <div class="form-grid">
+      <div class="layout">
         <div class="field">
           <label for="location">Starting location</label>
-          <div class="input-wrap">
+          <div class="input-row">
             <input
               id="location"
               type="text"
               autocomplete="street-address"
-              placeholder="Example: 5000 Forbes Ave, Pittsburgh, PA"
+              placeholder="5000 Forbes Ave, Pittsburgh, PA"
             />
-            <button id="useLocationBtn" class="location-button" type="button">
-              📍 Use my location
-            </button>
-          </div>
-          <div class="helper">
-            You can enter a specific street address or a place name — not just a city or ZIP.
+            <button id="useLocationBtn" class="location-button" type="button">Use my location</button>
           </div>
         </div>
 
@@ -533,28 +554,28 @@
             value="10"
             inputmode="decimal"
           />
-          <div class="helper">Enter any custom distance from 0.5 to 100 miles.</div>
+          <div class="hint">0.5 to 100 miles</div>
         </div>
       </div>
 
-      <div class="form-grid three">
+      <div class="layout-3">
         <div class="field">
-          <label for="activity">What sounds good?</label>
+          <label for="activity">Activity type</label>
           <select id="activity">
-            <option value="surprise">✨ Surprise me</option>
-            <option value="food">🍽️ Food & drinks</option>
-            <option value="arts">🎨 Arts & culture</option>
-            <option value="entertainment">🎬 Entertainment</option>
-            <option value="outdoors">🌳 Outdoors & nature</option>
-            <option value="shopping">🛍️ Shopping</option>
-            <option value="sports">🏃 Sports & fitness</option>
-            <option value="attractions">🎡 Attractions & sightseeing</option>
-            <option value="nightlife">🌙 Nightlife</option>
+            <option value="surprise">Surprise me</option>
+            <option value="food">Food & drinks</option>
+            <option value="arts">Arts & culture</option>
+            <option value="entertainment">Entertainment</option>
+            <option value="outdoors">Outdoors & nature</option>
+            <option value="shopping">Shopping</option>
+            <option value="sports">Sports & fitness</option>
+            <option value="attractions">Attractions & sightseeing</option>
+            <option value="nightlife">Nightlife</option>
           </select>
         </div>
 
         <div class="field">
-          <label for="setting">Indoor or outdoor?</label>
+          <label for="setting">Setting</label>
           <select id="setting">
             <option value="either">Either</option>
             <option value="indoor">Indoor</option>
@@ -563,28 +584,25 @@
         </div>
 
         <div class="field">
-          <label for="resultCount">How many ideas?</label>
+          <label for="resultCount">Number of results</label>
           <select id="resultCount">
-            <option value="5">5 recommendations</option>
-            <option value="8" selected>8 recommendations</option>
-            <option value="10">10 recommendations</option>
-            <option value="12">12 recommendations</option>
+            <option value="5">5</option>
+            <option value="8" selected>8</option>
+            <option value="10">10</option>
+            <option value="12">12</option>
           </select>
         </div>
       </div>
 
-      <button id="findBtn" class="primary-button" type="button">
-        Find Something To Do
-      </button>
-
+      <button id="findBtn" class="primary-button" type="button">Find Recommendations</button>
       <div id="message" class="message hidden" role="status"></div>
     </section>
 
     <section id="weatherSection" class="panel hidden">
-      <div class="weather-heading">
-        <div id="weatherIcon" class="weather-icon">☀️</div>
+      <div class="weather-top">
+        <div id="weatherMark" class="weather-mark">74°</div>
         <div>
-          <h2>Current weather</h2>
+          <h2 style="margin:0;">Current weather</h2>
           <p id="weatherLocation"></p>
         </div>
       </div>
@@ -594,22 +612,18 @@
           <span>Temperature</span>
           <strong id="temp">--</strong>
         </div>
-
         <div class="weather-stat">
           <span>Feels like</span>
           <strong id="feels">--</strong>
         </div>
-
         <div class="weather-stat">
           <span>Conditions</span>
           <strong id="conditions">--</strong>
         </div>
-
         <div class="weather-stat">
           <span>Wind</span>
           <strong id="wind">--</strong>
         </div>
-
         <div class="weather-stat">
           <span>Precipitation</span>
           <strong id="precip">--</strong>
@@ -618,23 +632,19 @@
     </section>
 
     <section id="recommendationSection" class="panel hidden">
-      <div class="panel-title-row">
+      <div class="panel-header">
         <div>
-          <h2>Your recommendations</h2>
-          <div id="resultsSummary" class="section-note"></div>
+          <h2>Recommendations</h2>
+          <p id="resultsSummary" class="subtle"></p>
         </div>
       </div>
 
-      <div id="recommendations" class="recommendations-grid"></div>
+      <div id="recommendations" class="results-grid"></div>
     </section>
 
     <div class="footer">
-      Weather data: Open-Meteo. Location search and place data: OpenStreetMap contributors
-      using Nominatim and Overpass. Distances shown are straight-line estimates, not driving distance.
-      <br />
-      <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">
-        © OpenStreetMap contributors
-      </a>
+      Weather data from Open-Meteo. Place data from OpenStreetMap contributors using Nominatim and Overpass.
+      Distances are straight-line estimates.
     </div>
   </main>
 
@@ -757,8 +767,8 @@
       const button = document.getElementById("findBtn");
       button.disabled = isLoading;
       button.innerHTML = isLoading
-        ? '<span class="loader"></span>Finding ideas...'
-        : "Find Something To Do";
+        ? '<span class="loader"></span>Searching'
+        : "Find Recommendations";
     }
 
     async function fetchJSON(url, options = {}, timeoutMs = 18000) {
@@ -791,7 +801,7 @@
 
       const button = document.getElementById("useLocationBtn");
       button.disabled = true;
-      button.textContent = "Locating...";
+      button.textContent = "Locating";
 
       navigator.geolocation.getCurrentPosition(
         position => {
@@ -803,15 +813,13 @@
 
           document.getElementById("location").value = "Current location";
           button.disabled = false;
-          button.textContent = "📍 Use my location";
-          showMessage("Current location selected. Click “Find Something To Do.”", "info");
+          button.textContent = "Use my location";
+          showMessage("Current location selected. Choose your filters and search.", "info");
         },
         () => {
           button.disabled = false;
-          button.textContent = "📍 Use my location";
-          showMessage(
-            "I couldn't access your location. You can still type a full address or place name."
-          );
+          button.textContent = "Use my location";
+          showMessage("Location access was unavailable. You can enter an address or place name instead.");
         },
         {
           enableHighAccuracy: false,
@@ -887,7 +895,6 @@
       try {
         return await geocodeWithNominatim(locationText);
       } catch (firstError) {
-        // Open-Meteo is a useful fallback for city names and postal codes.
         try {
           return await geocodeWithOpenMeteo(locationText);
         } catch {
@@ -939,36 +946,29 @@
         food: `
           nwr${around}["amenity"~"^(restaurant|cafe|fast_food|food_court|ice_cream)$"]["name"];
         `,
-
         arts: `
           nwr${around}["tourism"~"^(museum|gallery)$"]["name"];
           nwr${around}["amenity"~"^(arts_centre|theatre)$"]["name"];
         `,
-
         entertainment: `
           nwr${around}["amenity"~"^(cinema|theatre)$"]["name"];
           nwr${around}["leisure"~"^(bowling_alley|amusement_arcade|escape_game)$"]["name"];
           nwr${around}["tourism"="theme_park"]["name"];
         `,
-
         outdoors: `
           nwr${around}["leisure"~"^(park|garden|nature_reserve)$"]["name"];
           nwr${around}["tourism"~"^(viewpoint|zoo)$"]["name"];
         `,
-
         shopping: `
           nwr${around}["shop"~"^(mall|department_store|books|clothes|gift|sports|toys|music|electronics|florist)$"]["name"];
         `,
-
         sports: `
           nwr${around}["leisure"~"^(sports_centre|fitness_centre|swimming_pool|golf_course|ice_rink|pitch|track)$"]["name"];
         `,
-
         attractions: `
           nwr${around}["tourism"~"^(attraction|zoo|aquarium|theme_park|museum|viewpoint)$"]["name"];
           nwr${around}["historic"~"^(castle|monument|memorial|ruins)$"]["name"];
         `,
-
         nightlife: `
           nwr${around}["amenity"~"^(bar|pub|nightclub|music_venue)$"]["name"];
         `
@@ -992,12 +992,7 @@
 
     async function getNearbyPlaces(lat, lon, miles, activityChoice) {
       const radiusMeters = Math.max(1, Math.round(miles * 1609.344));
-      const statements = buildCategoryStatements(
-        activityChoice,
-        radiusMeters,
-        lat,
-        lon
-      );
+      const statements = buildCategoryStatements(activityChoice, radiusMeters, lat, lon);
 
       const query = `
         [out:json][timeout:25];
@@ -1023,10 +1018,7 @@
     }
 
     function getCoordinates(element) {
-      if (
-        typeof element.lat === "number" &&
-        typeof element.lon === "number"
-      ) {
+      if (typeof element.lat === "number" && typeof element.lon === "number") {
         return { lat: element.lat, lon: element.lon };
       }
 
@@ -1057,9 +1049,7 @@
         Math.cos(toRadians(lat2)) *
         Math.sin(dLon / 2) ** 2;
 
-      return earthRadiusMiles *
-        2 *
-        Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return earthRadiusMiles * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
     function titleCase(value) {
@@ -1095,41 +1085,20 @@
 
       const type = rawType(tags);
 
-      if (indoorTypes.has(type)) {
-        return "Indoor";
-      }
+      if (indoorTypes.has(type)) return "Indoor";
+      if (outdoorTypes.has(type)) return "Outdoor";
 
-      if (outdoorTypes.has(type)) {
-        return "Outdoor";
-      }
-
-      if (tags.shop) {
-        return "Indoor";
-      }
-
-      if (tags.building && tags.building !== "no") {
-        return "Indoor";
-      }
-
-      if (tags.tourism === "attraction") {
-        return "Indoor / outdoor";
-      }
-
-      if (tags.historic) {
-        return "Outdoor";
-      }
-
-      if (tags.leisure === "swimming_pool") {
-        return "Indoor / outdoor";
-      }
+      if (tags.shop) return "Indoor";
+      if (tags.building && tags.building !== "no") return "Indoor";
+      if (tags.tourism === "attraction") return "Indoor / outdoor";
+      if (tags.historic) return "Outdoor";
+      if (tags.leisure === "swimming_pool") return "Indoor / outdoor";
 
       return "Indoor / outdoor";
     }
 
     function buildAddress(tags = {}) {
-      if (tags["addr:full"]) {
-        return tags["addr:full"];
-      }
+      if (tags["addr:full"]) return tags["addr:full"];
 
       const streetLine = [
         tags["addr:housenumber"],
@@ -1143,20 +1112,7 @@
       ].filter(Boolean);
 
       const parts = [streetLine, ...locality].filter(Boolean);
-
       return parts.length ? parts.join(", ") : "Address not listed";
-    }
-
-    function weatherIcon(code) {
-      if ([0, 1].includes(code)) return "☀️";
-      if ([2, 3].includes(code)) return "⛅";
-      if ([45, 48].includes(code)) return "🌫️";
-      if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) {
-        return "🌧️";
-      }
-      if ([71, 73, 75, 77, 85, 86].includes(code)) return "❄️";
-      if ([95, 96, 99].includes(code)) return "⛈️";
-      return "🌤️";
     }
 
     function weatherIsBadForOutdoors(weather) {
@@ -1196,29 +1152,29 @@
 
       if (weatherIsBadForOutdoors(weather)) {
         if (place.setting === "Indoor") {
-          return `With ${description.toLowerCase()} and a temperature around ${temp}°F, this indoor option keeps you out of the rougher weather.`;
+          return `A good indoor choice for ${description.toLowerCase()} and ${temp}°F weather.`;
         }
 
         if (place.setting === "Outdoor") {
-          return `This is outdoors, so plan around the ${description.toLowerCase()} and ${temp}°F temperature.`;
+          return `Still an option, but keep in mind the ${description.toLowerCase()} and ${temp}°F temperature.`;
         }
 
-        return `This place may offer some flexibility while conditions are ${description.toLowerCase()} and around ${temp}°F.`;
+        return `A flexible option for today's ${description.toLowerCase()} and ${temp}°F weather.`;
       }
 
       if (weatherIsGreatForOutdoors(weather) && place.setting === "Outdoor") {
-        return `It is ${description.toLowerCase()} and about ${temp}°F, which makes this a strong outdoor option today.`;
+        return `A strong outdoor pick with ${description.toLowerCase()} and ${temp}°F conditions.`;
       }
 
       if (requestedSetting === "indoor" && place.setting === "Indoor") {
-        return `It is ${description.toLowerCase()} and about ${temp}°F, and this matches your indoor preference.`;
+        return `Matches your indoor preference and works well with today's weather.`;
       }
 
       if (requestedSetting === "outdoor" && place.setting === "Outdoor") {
-        return `It is ${description.toLowerCase()} and about ${temp}°F, and this matches your outdoor preference.`;
+        return `Matches your outdoor preference and today's conditions.`;
       }
 
-      return `Current conditions are ${description.toLowerCase()} and about ${temp}°F, making this a reasonable nearby choice.`;
+      return `A nearby option that fits the current weather reasonably well.`;
     }
 
     function scorePlace(place, weather, requestedSetting) {
@@ -1252,27 +1208,17 @@
       if (requestedSetting === "either") return true;
 
       if (requestedSetting === "indoor") {
-        return placeSetting === "Indoor" ||
-          placeSetting === "Indoor / outdoor";
+        return placeSetting === "Indoor" || placeSetting === "Indoor / outdoor";
       }
 
       if (requestedSetting === "outdoor") {
-        return placeSetting === "Outdoor" ||
-          placeSetting === "Indoor / outdoor";
+        return placeSetting === "Outdoor" || placeSetting === "Indoor / outdoor";
       }
 
       return true;
     }
 
-    function normalizePlaces(
-      elements,
-      userLat,
-      userLon,
-      settingChoice,
-      maxMiles,
-      weather,
-      resultCount
-    ) {
+    function normalizePlaces(elements, userLat, userLon, settingChoice, maxMiles, weather, resultCount) {
       const seen = new Set();
       const places = [];
 
@@ -1283,21 +1229,13 @@
 
         if (!coords || !name) continue;
 
-        const distance = haversineMiles(
-          userLat,
-          userLon,
-          coords.lat,
-          coords.lon
-        );
-
+        const distance = haversineMiles(userLat, userLon, coords.lat, coords.lon);
         if (!Number.isFinite(distance) || distance > maxMiles) continue;
 
         const setting = indoorOutdoor(tags);
-
         if (!matchesSetting(setting, settingChoice)) continue;
 
         const key = `${name.toLowerCase()}-${Math.round(coords.lat * 1000)}-${Math.round(coords.lon * 1000)}`;
-
         if (seen.has(key)) continue;
         seen.add(key);
 
@@ -1314,14 +1252,11 @@
 
         place.reason = weatherReason(place, weather, settingChoice);
         place.score = scorePlace(place, weather, settingChoice);
-
         places.push(place);
       }
 
       places.sort((a, b) => {
-        if (b.score !== a.score) {
-          return b.score - a.score;
-        }
+        if (b.score !== a.score) return b.score - a.score;
         return a.distance - b.distance;
       });
 
@@ -1331,22 +1266,17 @@
     function displayWeather(location, weather) {
       document.getElementById("weatherSection").classList.remove("hidden");
       document.getElementById("weatherLocation").textContent = location.label;
-
-      document.getElementById("weatherIcon").textContent =
-        weatherIcon(Number(weather.weather_code));
+      document.getElementById("weatherMark").textContent =
+        `${Math.round(Number(weather.temperature_2m))}°`;
 
       document.getElementById("temp").textContent =
         `${Math.round(Number(weather.temperature_2m))}°F`;
-
       document.getElementById("feels").textContent =
         `${Math.round(Number(weather.apparent_temperature))}°F`;
-
       document.getElementById("conditions").textContent =
         weatherDescriptions[weather.weather_code] || "Unknown";
-
       document.getElementById("wind").textContent =
         `${Math.round(Number(weather.wind_speed_10m))} mph`;
-
       document.getElementById("precip").textContent =
         `${Number(weather.precipitation || 0).toFixed(2)} in`;
     }
@@ -1354,7 +1284,6 @@
     function osmMapUrl(place) {
       const lat = place.coords.lat;
       const lon = place.coords.lon;
-
       return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}&mlon=${encodeURIComponent(lon)}#map=17/${encodeURIComponent(lat)}/${encodeURIComponent(lon)}`;
     }
 
@@ -1368,57 +1297,47 @@
 
       if (places.length === 0) {
         summary.textContent = "No matches found with the current filters.";
-
         container.innerHTML = `
-          <div class="empty-state" style="grid-column: 1 / -1;">
+          <div class="empty-state">
             <strong>No matching places found</strong>
-            Try increasing the distance, choosing “Either” for indoor/outdoor,
-            or selecting “Surprise me.”
+            Try increasing the distance or choosing a broader activity type.
           </div>
         `;
         return;
       }
 
       summary.textContent =
-        `${places.length} idea${places.length === 1 ? "" : "s"} within ${maxMiles} mile${maxMiles === 1 ? "" : "s"}, ranked using distance and today's weather.`;
+        `${places.length} result${places.length === 1 ? "" : "s"} within ${maxMiles} mile${maxMiles === 1 ? "" : "s"}.`;
 
       places.forEach((place, index) => {
         const card = document.createElement("article");
-        card.className = "place-card";
+        card.className = "card";
 
         const websiteLink = safeExternalUrl(place.website)
-          ? `<a href="${escapeAttribute(place.website)}" target="_blank" rel="noopener">Website ↗</a>`
+          ? `<a href="${escapeAttribute(place.website)}" target="_blank" rel="noopener">Website</a>`
           : "";
 
         card.innerHTML = `
-          <div class="place-number">${index + 1}</div>
-          <h3>${escapeHTML(place.name)}</h3>
-
-          <div class="chips">
-            <span class="chip blue">${escapeHTML(place.category)}</span>
-            <span class="chip purple">${escapeHTML(place.setting)}</span>
-            <span class="chip">${place.distance.toFixed(1)} mi away</span>
+          <div class="card-top">
+            <h3>${escapeHTML(place.name)}</h3>
+            <div class="rank">${index + 1}</div>
           </div>
 
-          ${
-            place.description
-              ? `<p>${escapeHTML(place.description)}</p>`
-              : ""
-          }
+          <div class="chips">
+            <span class="chip">${escapeHTML(place.category)}</span>
+            <span class="chip">${escapeHTML(place.setting)}</span>
+            <span class="chip">${place.distance.toFixed(1)} miles</span>
+          </div>
 
-          <p class="reason">
-            <strong>Why it fits today:</strong>
-            ${escapeHTML(place.reason)}
-          </p>
+          ${place.description ? `<p class="description">${escapeHTML(place.description)}</p>` : ""}
 
-          <div class="place-footer">
+          <p class="reason"><strong>Why this works:</strong> ${escapeHTML(place.reason)}</p>
+
+          <div class="card-footer">
             <div class="address">${escapeHTML(place.address)}</div>
-            <div>
+            <div class="links">
               ${websiteLink}
-              ${websiteLink ? " &nbsp; " : ""}
-              <a href="${escapeAttribute(osmMapUrl(place))}" target="_blank" rel="noopener">
-                Map ↗
-              </a>
+              <a href="${escapeAttribute(osmMapUrl(place))}" target="_blank" rel="noopener">Map</a>
             </div>
           </div>
         `;
@@ -1429,7 +1348,6 @@
 
     function safeExternalUrl(value) {
       if (!value) return false;
-
       try {
         const parsed = new URL(value);
         return parsed.protocol === "https:" || parsed.protocol === "http:";
@@ -1454,35 +1372,22 @@
     async function findActivities() {
       hideMessage();
 
-      const locationText =
-        document.getElementById("location").value.trim();
-
-      const miles =
-        Number(document.getElementById("distance").value);
-
-      const activityChoice =
-        document.getElementById("activity").value;
-
-      const settingChoice =
-        document.getElementById("setting").value;
-
-      const resultCount =
-        Number(document.getElementById("resultCount").value);
+      const locationText = document.getElementById("location").value.trim();
+      const miles = Number(document.getElementById("distance").value);
+      const activityChoice = document.getElementById("activity").value;
+      const settingChoice = document.getElementById("setting").value;
+      const resultCount = Number(document.getElementById("resultCount").value);
 
       document.getElementById("weatherSection").classList.add("hidden");
       document.getElementById("recommendationSection").classList.add("hidden");
 
       if (!browserLocation && !locationText) {
-        showMessage(
-          "Enter a starting address, landmark, city, or ZIP code."
-        );
+        showMessage("Enter a starting address, landmark, city, or ZIP code.");
         return;
       }
 
       if (!Number.isFinite(miles) || miles < 0.5 || miles > 100) {
-        showMessage(
-          "Enter a travel distance between 0.5 and 100 miles."
-        );
+        showMessage("Enter a travel distance between 0.5 and 100 miles.");
         return;
       }
 
@@ -1491,54 +1396,36 @@
       try {
         let location;
 
-        if (
-          browserLocation &&
-          locationText.toLowerCase() === "current location"
-        ) {
+        if (browserLocation && locationText.toLowerCase() === "current location") {
           location = browserLocation;
         } else {
           try {
             location = await geocodeLocation(locationText);
           } catch (error) {
             if (error.message === "LOCATION_NOT_FOUND") {
-              showMessage(
-                "I couldn't find that location. Try a fuller address, such as “5000 Forbes Ave, Pittsburgh, PA.”"
-              );
+              showMessage("That location could not be found. Try a fuller address.");
             } else {
-              showMessage(
-                "The location service is not responding right now. Please try again."
-              );
+              showMessage("The location service is unavailable right now. Please try again.");
             }
             return;
           }
         }
 
         let weather;
-
         try {
           weather = await getWeather(location.lat, location.lon);
         } catch (error) {
-          showMessage(
-            "I found your location, but the weather service is unavailable right now. Please try again."
-          );
+          showMessage("The weather service is unavailable right now. Please try again.");
           return;
         }
 
         displayWeather(location, weather);
 
         let rawPlaces;
-
         try {
-          rawPlaces = await getNearbyPlaces(
-            location.lat,
-            location.lon,
-            miles,
-            activityChoice
-          );
+          rawPlaces = await getNearbyPlaces(location.lat, location.lon, miles, activityChoice);
         } catch (error) {
-          showMessage(
-            "The nearby places service is busy or unavailable right now. Try again in a moment or use a smaller search distance."
-          );
+          showMessage("The places service is unavailable right now. Try again in a moment.");
           return;
         }
 
@@ -1553,20 +1440,13 @@
         );
 
         displayRecommendations(places, miles);
-
       } catch (error) {
         if (!navigator.onLine) {
-          showMessage(
-            "You appear to be offline. Check your internet connection and try again."
-          );
+          showMessage("You appear to be offline. Check your internet connection and try again.");
         } else if (error.name === "AbortError") {
-          showMessage(
-            "One of the services took too long to respond. Please try again."
-          );
+          showMessage("One of the services took too long to respond. Please try again.");
         } else {
-          showMessage(
-            "Something unexpected happened while loading the recommendations. Please try again."
-          );
+          showMessage("Something unexpected happened. Please try again.");
         }
       } finally {
         setLoading(false);
