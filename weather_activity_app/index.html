@@ -643,8 +643,7 @@
     const OPEN_METEO_GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
     const WEATHER_URL = "https://api.open-meteo.com/v1/forecast";
     const OVERPASS_ENDPOINTS = [
-      "https://overpass.private.coffee/api/interpreter",
-      "https://overpass-api.de/api/interpreter"
+      "https://overpass.private.coffee/api/interpreter"
     ];
 
     const CENSUS_GEOCODER_URL =
@@ -652,6 +651,7 @@
 
     let browserLocation = null;
     const geocodeCache = new Map();
+    let lastNominatimRequestAt = 0;
 
     const weatherDescriptions = {
       0: "Clear sky",
@@ -825,6 +825,21 @@
       );
     }
 
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function waitForNominatimSlot() {
+      const elapsed = Date.now() - lastNominatimRequestAt;
+      const wait = Math.max(0, 1050 - elapsed);
+
+      if (wait > 0) {
+        await sleep(wait);
+      }
+
+      lastNominatimRequestAt = Date.now();
+    }
+
     async function geocodeWithNominatim(locationText) {
       const cacheKey = locationText.toLowerCase().trim();
 
@@ -840,10 +855,12 @@
         "accept-language": "en"
       });
 
+      await waitForNominatimSlot();
+
       const data = await fetchJSON(
         `${NOMINATIM_URL}?${params.toString()}`,
         {},
-        7500
+        6500
       );
 
       if (!Array.isArray(data) || data.length === 0) {
@@ -1097,7 +1114,7 @@
 
       for (const endpoint of OVERPASS_ENDPOINTS) {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 7500);
+        const timer = setTimeout(() => controller.abort(), 4500);
 
         try {
           const body = new URLSearchParams({ data: query });
@@ -1146,56 +1163,187 @@
       );
 
       return `
-        [out:json][timeout:8];
+        [out:json][timeout:6];
         (
           ${statements}
         );
-        out center 100;
+        out center 90;
       `;
     }
 
-    async function getNearbyPlaces(lat, lon, miles, activityChoice) {
-      // Searching an enormous 50-100 mile circle is the main reason public
-      // Overpass servers become slow. We first search a useful nearby area.
-      // Those results are still valid for any larger travel limit.
-      const firstRadius =
-        activityChoice === "surprise"
-          ? Math.min(miles, 7)
-          : Math.min(miles, 12);
+    function fallbackSearchTerm(activityChoice, settingChoice, weather) {
+      if (activityChoice === "food") return "[restaurant]";
+      if (activityChoice === "arts") return "[museum]";
+      if (activityChoice === "entertainment") return "[cinema]";
+      if (activityChoice === "outdoors") return "[park]";
+      if (activityChoice === "shopping") return "[mall]";
+      if (activityChoice === "sports") return "sports centre";
+      if (activityChoice === "attractions") return "[attraction]";
+      if (activityChoice === "nightlife") return "[pub]";
 
-      const firstResults = await requestOverpass(
-        makePlacesQuery(lat, lon, firstRadius, activityChoice)
+      if (settingChoice === "indoor") return "[museum]";
+      if (settingChoice === "outdoor") return "[park]";
+      if (weather && weatherIsBadForOutdoors(weather)) return "[museum]";
+
+      return "[attraction]";
+    }
+
+    function viewboxForMiles(lat, lon, miles) {
+      // Keep the fallback search focused. For larger travel limits we still
+      // find the closest useful places first rather than searching a huge box.
+      const radius = Math.min(Math.max(miles, 1), 25);
+      const latDelta = radius / 69;
+      const cosine = Math.max(0.2, Math.cos(lat * Math.PI / 180));
+      const lonDelta = radius / (69 * cosine);
+
+      const west = lon - lonDelta;
+      const east = lon + lonDelta;
+      const north = lat + latDelta;
+      const south = lat - latDelta;
+
+      return `${west},${north},${east},${south}`;
+    }
+
+    function nominatimResultToElement(item, index) {
+      const tags = {};
+      const category = item.category || item.class || "";
+      const type = item.type || "activity";
+
+      if (category === "amenity") tags.amenity = type;
+      else if (category === "tourism") tags.tourism = type;
+      else if (category === "leisure") tags.leisure = type;
+      else if (category === "shop") tags.shop = type;
+      else if (category === "historic") tags.historic = type;
+
+      tags.name =
+        item.name ||
+        (item.display_name ? item.display_name.split(",")[0] : "Nearby place");
+
+      tags._nominatimAddress = item.display_name || "";
+
+      if (item.extratags) {
+        const extra = item.extratags;
+        if (extra.website) tags.website = extra.website;
+        if (extra["contact:website"]) {
+          tags["contact:website"] = extra["contact:website"];
+        }
+        if (extra.description) tags.description = extra.description;
+        if (extra.indoor) tags.indoor = extra.indoor;
+      }
+
+      return {
+        type: item.osm_type || "nominatim",
+        id: item.osm_id || `fallback-${index}`,
+        lat: Number(item.lat),
+        lon: Number(item.lon),
+        tags
+      };
+    }
+
+    async function getNearbyPlacesFromNominatim(
+      lat,
+      lon,
+      miles,
+      activityChoice,
+      settingChoice,
+      weather
+    ) {
+      const searchTerm = fallbackSearchTerm(
+        activityChoice,
+        settingChoice,
+        weather
       );
 
-      // Most city/suburban searches finish here after one API request.
-      if (firstResults.length >= 8 || firstRadius >= miles) {
-        return firstResults;
+      const params = new URLSearchParams({
+        q: searchTerm,
+        format: "jsonv2",
+        addressdetails: "1",
+        extratags: "1",
+        limit: "20",
+        layer: "poi",
+        viewbox: viewboxForMiles(lat, lon, miles),
+        bounded: "1"
+      });
+
+      await waitForNominatimSlot();
+
+      const data = await fetchJSON(
+        `${NOMINATIM_URL}?${params.toString()}`,
+        {},
+        6500
+      );
+
+      if (!Array.isArray(data)) {
+        throw new Error("PLACES_DATA_MISSING");
       }
 
-      // Only sparse/remote searches get one larger retry.
-      const expandedRadius = Math.min(miles, 25);
+      return data
+        .filter(item => {
+          const itemLat = Number(item.lat);
+          const itemLon = Number(item.lon);
 
-      if (expandedRadius <= firstRadius) {
-        return firstResults;
-      }
+          return (
+            Number.isFinite(itemLat) &&
+            Number.isFinite(itemLon) &&
+            haversineMiles(lat, lon, itemLat, itemLon) <= miles
+          );
+        })
+        .map(nominatimResultToElement);
+    }
+
+    async function getNearbyPlaces(
+      lat,
+      lon,
+      miles,
+      activityChoice,
+      settingChoice,
+      weather
+    ) {
+      // One small, fast Overpass request is the primary source.
+      const primaryRadius =
+        activityChoice === "surprise"
+          ? Math.min(miles, 6)
+          : Math.min(miles, 10);
 
       try {
-        const expandedResults = await requestOverpass(
-          makePlacesQuery(lat, lon, expandedRadius, activityChoice)
+        const primaryResults = await requestOverpass(
+          makePlacesQuery(lat, lon, primaryRadius, activityChoice)
+        );
+
+        if (primaryResults.length >= 5 || primaryRadius >= miles) {
+          return primaryResults;
+        }
+
+        // Sparse areas use Nominatim to fill in the list instead of making
+        // another large Overpass query.
+        const fallbackResults = await getNearbyPlacesFromNominatim(
+          lat,
+          lon,
+          miles,
+          activityChoice,
+          settingChoice,
+          weather
         );
 
         const combined = new Map();
 
-        for (const element of [...firstResults, ...expandedResults]) {
+        for (const element of [...primaryResults, ...fallbackResults]) {
           const key = `${element.type || "item"}-${element.id || ""}`;
           combined.set(key, element);
         }
 
         return [...combined.values()];
       } catch {
-        // If the larger retry fails, keep the valid nearby results instead
-        // of throwing away the whole search.
-        return firstResults;
+        // Overpass is a public service and can be busy. The user should not
+        // lose the whole search when that happens.
+        return await getNearbyPlacesFromNominatim(
+          lat,
+          lon,
+          miles,
+          activityChoice,
+          settingChoice,
+          weather
+        );
       }
     }
 
@@ -1281,6 +1429,7 @@
 
     function buildAddress(tags = {}) {
       if (tags["addr:full"]) return tags["addr:full"];
+      if (tags._nominatimAddress) return tags._nominatimAddress;
 
       const streetLine = [
         tags["addr:housenumber"],
@@ -1604,9 +1753,16 @@
 
         let rawPlaces;
         try {
-          rawPlaces = await getNearbyPlaces(location.lat, location.lon, miles, activityChoice);
+          rawPlaces = await getNearbyPlaces(
+            location.lat,
+            location.lon,
+            miles,
+            activityChoice,
+            settingChoice,
+            weather
+          );
         } catch (error) {
-          showMessage("Your location and weather loaded, but the nearby places service is temporarily busy. Try again in a few seconds.");
+          showMessage("Nearby places could not be loaded right now. Please try again shortly.");
           return;
         }
 
