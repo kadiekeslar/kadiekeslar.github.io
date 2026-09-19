@@ -525,7 +525,7 @@
       <div class="panel-header">
         <div>
           <h2>Search</h2>
-          <p class="subtle">Enter a street address, landmark, neighborhood, city, or ZIP code.</p>
+          <p class="subtle">Search from an address, landmark, neighborhood, city, or ZIP code.</p>
         </div>
       </div>
 
@@ -643,9 +643,12 @@
     const OPEN_METEO_GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
     const WEATHER_URL = "https://api.open-meteo.com/v1/forecast";
     const OVERPASS_ENDPOINTS = [
-      "https://overpass-api.de/api/interpreter",
-      "https://overpass.private.coffee/api/interpreter"
+      "https://overpass.private.coffee/api/interpreter",
+      "https://overpass-api.de/api/interpreter"
     ];
+
+    const CENSUS_GEOCODER_URL =
+      "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress";
 
     let browserLocation = null;
     const geocodeCache = new Map();
@@ -764,7 +767,7 @@
         : "Find Recommendations";
     }
 
-    async function fetchJSON(url, options = {}, timeoutMs = 18000) {
+    async function fetchJSON(url, options = {}, timeoutMs = 9000) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -833,10 +836,15 @@
         q: locationText,
         format: "jsonv2",
         addressdetails: "1",
-        limit: "1"
+        limit: "3",
+        "accept-language": "en"
       });
 
-      const data = await fetchJSON(`${NOMINATIM_URL}?${params.toString()}`);
+      const data = await fetchJSON(
+        `${NOMINATIM_URL}?${params.toString()}`,
+        {},
+        7500
+      );
 
       if (!Array.isArray(data) || data.length === 0) {
         throw new Error("LOCATION_NOT_FOUND");
@@ -865,7 +873,9 @@
       });
 
       const data = await fetchJSON(
-        `${OPEN_METEO_GEOCODING_URL}?${params.toString()}`
+        `${OPEN_METEO_GEOCODING_URL}?${params.toString()}`,
+        {},
+        6500
       );
 
       if (!data.results || data.results.length === 0) {
@@ -884,14 +894,113 @@
       };
     }
 
+    function looksLikeStreetAddress(locationText) {
+      return /^\s*\d+\s+\S+/.test(locationText);
+    }
+
+    function geocodeWithCensus(locationText) {
+      return new Promise((resolve, reject) => {
+        // The Census geocoder is an extra fallback for U.S. street addresses.
+        // JSONP is used so the static GitHub Pages site does not depend on CORS.
+        const callbackName =
+          `censusGeocode_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+
+        const timer = setTimeout(() => {
+          cleanup();
+          reject(new Error("CENSUS_TIMEOUT"));
+        }, 6500);
+
+        const script = document.createElement("script");
+
+        function cleanup() {
+          clearTimeout(timer);
+          script.remove();
+          try {
+            delete window[callbackName];
+          } catch {}
+        }
+
+        window[callbackName] = data => {
+          try {
+            const matches =
+              data &&
+              data.result &&
+              Array.isArray(data.result.addressMatches)
+                ? data.result.addressMatches
+                : [];
+
+            if (matches.length === 0) {
+              cleanup();
+              reject(new Error("LOCATION_NOT_FOUND"));
+              return;
+            }
+
+            const match = matches[0];
+            const coordinates = match.coordinates || {};
+
+            const lat = Number(coordinates.y);
+            const lon = Number(coordinates.x);
+
+            if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+              cleanup();
+              reject(new Error("LOCATION_DATA_MISSING"));
+              return;
+            }
+
+            const result = {
+              lat,
+              lon,
+              label: match.matchedAddress || locationText
+            };
+
+            geocodeCache.set(locationText.toLowerCase().trim(), result);
+            cleanup();
+            resolve(result);
+          } catch (error) {
+            cleanup();
+            reject(error);
+          }
+        };
+
+        const params = new URLSearchParams({
+          address: locationText,
+          benchmark: "Public_AR_Current",
+          format: "jsonp",
+          callback: callbackName
+        });
+
+        script.src = `${CENSUS_GEOCODER_URL}?${params.toString()}`;
+        script.onerror = () => {
+          cleanup();
+          reject(new Error("CENSUS_REQUEST_FAILED"));
+        };
+
+        document.head.appendChild(script);
+      });
+    }
+
     async function geocodeLocation(locationText) {
+      const cacheKey = locationText.toLowerCase().trim();
+
+      if (geocodeCache.has(cacheKey)) {
+        return geocodeCache.get(cacheKey);
+      }
+
       try {
         return await geocodeWithNominatim(locationText);
-      } catch (firstError) {
+      } catch (nominatimError) {
+        // If this looks like a numbered U.S. street address, try the
+        // Census Bureau's address geocoder before falling back to city/ZIP search.
+        if (looksLikeStreetAddress(locationText)) {
+          try {
+            return await geocodeWithCensus(locationText);
+          } catch {}
+        }
+
         try {
           return await geocodeWithOpenMeteo(locationText);
         } catch {
-          throw firstError;
+          throw nominatimError;
         }
       }
     }
@@ -987,107 +1096,107 @@
       let lastError = null;
 
       for (const endpoint of OVERPASS_ENDPOINTS) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 7500);
+
         try {
-          const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 22000);
+          const body = new URLSearchParams({ data: query });
 
-          try {
-            const body = new URLSearchParams({ data: query });
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+            },
+            body: body.toString(),
+            signal: controller.signal
+          });
 
-            const response = await fetch(endpoint, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
-              },
-              body: body.toString(),
-              signal: controller.signal
-            });
-
-            if (!response.ok) {
-              throw new Error(`HTTP_${response.status}`);
-            }
-
-            const data = await response.json();
-
-            if (!data || !Array.isArray(data.elements)) {
-              throw new Error("PLACES_DATA_MISSING");
-            }
-
-            return data.elements;
-          } finally {
-            clearTimeout(timer);
+          if (!response.ok) {
+            throw new Error(`HTTP_${response.status}`);
           }
+
+          const data = await response.json();
+
+          if (!data || !Array.isArray(data.elements)) {
+            throw new Error("PLACES_DATA_MISSING");
+          }
+
+          return data.elements;
         } catch (error) {
           lastError = error;
+        } finally {
+          clearTimeout(timer);
         }
       }
 
       throw lastError || new Error("PLACES_SERVICE_UNAVAILABLE");
     }
 
-    function searchRadii(maxMiles) {
-      // Start close to the user's address. Only expand the query when the
-      // smaller search does not provide enough candidates. This makes large
-      // distance searches much less likely to overload a public Overpass server.
-      const steps = [5, 10, 20, 35, 50, 75, 100];
-      const radii = steps.filter(value => value < maxMiles);
-      radii.push(maxMiles);
+    function makePlacesQuery(lat, lon, radiusMiles, activityChoice) {
+      const radiusMeters = Math.max(
+        1,
+        Math.round(radiusMiles * 1609.344)
+      );
 
-      return [...new Set(radii.map(value => Math.max(0.5, value)))]
-        .sort((a, b) => a - b);
+      const statements = buildCategoryStatements(
+        activityChoice,
+        radiusMeters,
+        lat,
+        lon
+      );
+
+      return `
+        [out:json][timeout:8];
+        (
+          ${statements}
+        );
+        out center 100;
+      `;
     }
 
     async function getNearbyPlaces(lat, lon, miles, activityChoice) {
-      const candidates = new Map();
-      const radii = searchRadii(miles);
+      // Searching an enormous 50-100 mile circle is the main reason public
+      // Overpass servers become slow. We first search a useful nearby area.
+      // Those results are still valid for any larger travel limit.
+      const firstRadius =
+        activityChoice === "surprise"
+          ? Math.min(miles, 7)
+          : Math.min(miles, 12);
 
-      for (const radiusMiles of radii) {
-        const radiusMeters = Math.max(
-          1,
-          Math.round(radiusMiles * 1609.344)
-        );
+      const firstResults = await requestOverpass(
+        makePlacesQuery(lat, lon, firstRadius, activityChoice)
+      );
 
-        const statements = buildCategoryStatements(
-          activityChoice,
-          radiusMeters,
-          lat,
-          lon
-        );
-
-        const query = `
-          [out:json][timeout:20];
-          (
-            ${statements}
-          );
-          out center 180;
-        `;
-
-        let elements;
-
-        try {
-          elements = await requestOverpass(query);
-        } catch (error) {
-          // If one radius fails, try the next radius/server combination.
-          // Only report a service failure if every attempt fails.
-          if (candidates.size === 0 && radiusMiles === radii[radii.length - 1]) {
-            throw error;
-          }
-          continue;
-        }
-
-        for (const element of elements) {
-          const key = `${element.type || "item"}-${element.id || Math.random()}`;
-          candidates.set(key, element);
-        }
-
-        // We only display up to eight recommendations. Once we have a healthy
-        // candidate pool, there is no reason to run a more expensive larger query.
-        if (candidates.size >= 40) {
-          break;
-        }
+      // Most city/suburban searches finish here after one API request.
+      if (firstResults.length >= 8 || firstRadius >= miles) {
+        return firstResults;
       }
 
-      return [...candidates.values()];
+      // Only sparse/remote searches get one larger retry.
+      const expandedRadius = Math.min(miles, 25);
+
+      if (expandedRadius <= firstRadius) {
+        return firstResults;
+      }
+
+      try {
+        const expandedResults = await requestOverpass(
+          makePlacesQuery(lat, lon, expandedRadius, activityChoice)
+        );
+
+        const combined = new Map();
+
+        for (const element of [...firstResults, ...expandedResults]) {
+          const key = `${element.type || "item"}-${element.id || ""}`;
+          combined.set(key, element);
+        }
+
+        return [...combined.values()];
+      } catch {
+        // If the larger retry fails, keep the valid nearby results instead
+        // of throwing away the whole search.
+        return firstResults;
+      }
     }
 
     function getCoordinates(element) {
@@ -1497,7 +1606,7 @@
         try {
           rawPlaces = await getNearbyPlaces(location.lat, location.lon, miles, activityChoice);
         } catch (error) {
-          showMessage("I found your location, but the nearby-places service did not respond. Please try the search again.");
+          showMessage("Your location and weather loaded, but the nearby places service is temporarily busy. Try again in a few seconds.");
           return;
         }
 
