@@ -1,5 +1,5 @@
 What Should I Do Today?
-This is a small weather-based activity recommendation website I made for HW3. The user can enter an address, landmark, neighborhood, city, or ZIP code, choose how far they are willing to travel, pick an activity type, and choose whether they want something indoors or outdoors. The app checks the current weather and nearby places, then gives a list of recommendations that fit the user's choices.
+This is a small weather based activity recommendation website. The user can enter an address, landmark, neighborhood, city, or ZIP code, choose how far they are willing to travel, pick an activity type, and choose whether they want something indoors or outdoors. The app checks the current weather and nearby places, then gives a list of recommendations that fit the user's choices and current weather.
 
 Live site: https://kadiekeslar.github.io/weather_activity_app/
 
@@ -76,20 +76,6 @@ Indoor and outdoor filters
 
 Turning off Wi-Fi before searching
 
-AI prompt log
-I used ChatGPT to help me learn the APIs, build the first version of the project, debug problems, and improve the interface. I read through and tested the code as I changed the project.
-
-Some of the main prompts that shaped the project were:
-
-"Build a small interactive weather-based activity recommendation app that uses a public API and explain how the API works."
-
-"Make the app accept a specific address, let the user enter any travel distance, and add more activity categories."
-
-"Fix the nearby places search because some locations are failing or taking too long to load."
-
-"Make the UI look cozy, professional, and welcoming without emojis or too much description."
-
-"Make a checklist and let me know if the project meets the assignment requirements, especially API security."
 
 Notes
 The distance shown for recommendations is an approximate straight-line distance, not driving distance. Place information comes from OpenStreetMap, so some places have more complete names, addresses, or categories than others. Public API services can also occasionally be slow or temporarily unavailable, so the app includes fallbacks and error messages when possible.
