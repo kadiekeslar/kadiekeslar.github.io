@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>What Should I Do Today?</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f5f7fb;
+      color: #1f2937;
+    }
+    .hero {
+      background: linear-gradient(135deg, #dbeafe, #eef2ff);
+      padding: 48px 20px 36px;
+      text-align: center;
+    }
+    .hero h1 { margin: 0 0 10px; font-size: 2.4rem; }
+    .hero p { margin: 0; color: #4b5563; }
+    .container {
+      max-width: 980px;
+      margin: 28px auto;
+      padding: 0 18px 50px;
+    }
+    .panel {
+      background: white;
+      border-radius: 16px;
+      padding: 22px;
+      margin-bottom: 22px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.07);
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 7px;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      font-size: 1rem;
+    }
+    button {
+      margin-top: 18px;
+      border: none;
+      background: #2563eb;
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:hover { background: #1d4ed8; }
+    button:disabled { opacity: 0.6; cursor: wait; }
+
+    .weather-box {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .weather-stat {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+    }
+    .weather-stat strong {
+      display: block;
+      font-size: 1.35rem;
+      margin-top: 4px;
+    }
+
+    .recommendations {
+      display: grid;
+      gap: 16px;
+    }
+    .card {
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 18px;
+      background: #fff;
+    }
+    .card h3 { margin: 0 0 8px; }
+    .meta {
+      color: #4b5563;
+      margin-bottom: 10px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 9px;
+      margin-right: 6px;
+      border-radius: 999px;
+      background: #eef2ff;
+      font-size: 0.85rem;
+    }
+    .message {
+      padding: 14px;
+      border-radius: 10px;
+      margin-top: 16px;
+    }
+    .error { background: #fee2e2; color: #991b1b; }
+    .info { background: #e0f2fe; color: #075985; }
+    .hidden { display: none; }
+
+    @media (max-width: 700px) {
+      .form-grid, .weather-box { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 1.9rem; }
+    }
+  </style>
+</head>
+<body>
+  <section class="hero">
+    <h1>What Should I Do Today?</h1>
+    <p>Get activity ideas based on your location, the weather, and what you feel like doing.</p>
+  </section>
+
+  <main class="container">
+    <section class="panel">
+      <div class="form-grid">
+        <div>
+          <label for="location">City or ZIP code</label>
+          <input id="location" type="text" placeholder="Pittsburgh, PA or 15213" />
+        </div>
+
+        <div>
+          <label for="distance">How far are you willing to travel?</label>
+          <select id="distance">
+            <option value="5">5 miles</option>
+            <option value="10" selected>10 miles</option>
+            <option value="20">20 miles</option>
+            <option value="50">50 miles</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="activity">What kind of activity?</label>
+          <select id="activity">
+            <option value="either">Either / surprise me</option>
+            <option value="food">Food</option>
+            <option value="fun">Something fun</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="setting">Indoor or outdoor?</label>
+          <select id="setting">
+            <option value="either">Either</option>
+            <option value="indoor">Indoor</option>
+            <option value="outdoor">Outdoor</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="findBtn">Find Something To Do</button>
+      <div id="message" class="message hidden"></div>
+    </section>
+
+    <section id="weatherSection" class="panel hidden">
+      <h2>Current Weather</h2>
+      <p id="weatherLocation"></p>
+      <div class="weather-box">
+        <div class="weather-stat">Temperature<strong id="temp">--</strong></div>
+        <div class="weather-stat">Feels Like<strong id="feels">--</strong></div>
+        <div class="weather-stat">Conditions<strong id="conditions">--</strong></div>
+        <div class="weather-stat">Wind<strong id="wind">--</strong></div>
+      </div>
+    </section>
+
+    <section id="recommendationSection" class="panel hidden">
+      <h2>Recommendations</h2>
+      <div id="recommendations" class="recommendations"></div>
+    </section>
+  </main>
+
+  <script>
+    const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
+    const WEATHER_URL = "https://api.open-meteo.com/v1/forecast";
+    const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+
+    const weatherDescriptions = {
+      0: "Clear sky",
+      1: "Mainly clear",
+      2: "Partly cloudy",
+      3: "Overcast",
+      45: "Fog",
+      48: "Fog",
+      51: "Light drizzle",
+      53: "Drizzle",
+      55: "Heavy drizzle",
+      61: "Light rain",
+      63: "Rain",
+      65: "Heavy rain",
+      71: "Light snow",
+      73: "Snow",
+      75: "Heavy snow",
+      80: "Rain showers",
+      81: "Rain showers",
+      82: "Heavy rain showers",
+      95: "Thunderstorm",
+      96: "Thunderstorm with hail",
+      99: "Thunderstorm with hail"
+    };
+
+    document.getElementById("findBtn").addEventListener("click", findActivities);
+
+    function showMessage(text, type = "error") {
+      const box = document.getElementById("message");
+      box.textContent = text;
+      box.className = `message ${type}`;
+    }
+
+    function hideMessage() {
+      document.getElementById("message").className = "message hidden";
+    }
+
+    async function fetchJSON(url, options = {}) {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+      return await response.json();
+    }
+
+    async function geocodeLocation(locationText) {
+      const params = new URLSearchParams({
+        name: locationText,
+        count: "1",
+        language: "en",
+        format: "json"
+      });
+
+      const data = await fetchJSON(`${GEOCODING_URL}?${params.toString()}`);
+
+      if (!data.results || data.results.length === 0) {
+        throw new Error("LOCATION_NOT_FOUND");
+      }
+
+      return data.results[0];
+    }
+
+    async function getWeather(latitude, longitude) {
+      const params = new URLSearchParams({
+        latitude,
+        longitude,
+        current: "temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m",
+        temperature_unit: "fahrenheit",
+        wind_speed_unit: "mph",
+        precipitation_unit: "inch",
+        timezone: "auto"
+      });
+
+      const data = await fetchJSON(`${WEATHER_URL}?${params.toString()}`);
+
+      if (!data.current) {
+        throw new Error("WEATHER_DATA_MISSING");
+      }
+
+      return data.current;
+    }
+
+    function buildOverpassQuery(lat, lon, miles, activityChoice) {
+      const radius = Math.round(miles * 1609.344);
+
+      let filters = "";
+
+      if (activityChoice === "food") {
+        filters = `
+          nwr(around:${radius},${lat},${lon})["amenity"~"^(restaurant|cafe|fast_food|food_court|ice_cream)$"]["name"];
+        `;
+      } else if (activityChoice === "fun") {
+        filters = `
+          nwr(around:${radius},${lat},${lon})["tourism"~"^(museum|gallery|zoo|theme_park|viewpoint)$"]["name"];
+          nwr(around:${radius},${lat},${lon})["leisure"~"^(park|garden|bowling_alley|amusement_arcade)$"]["name"];
+          nwr(around:${radius},${lat},${lon})["amenity"="cinema"]["name"];
+        `;
+      } else {
+        filters = `
+          nwr(around:${radius},${lat},${lon})["amenity"~"^(restaurant|cafe|fast_food|food_court|ice_cream|cinema)$"]["name"];
+          nwr(around:${radius},${lat},${lon})["tourism"~"^(museum|gallery|zoo|theme_park|viewpoint)$"]["name"];
+          nwr(around:${radius},${lat},${lon})["leisure"~"^(park|garden|bowling_alley|amusement_arcade)$"]["name"];
+        `;
+      }
+
+      return `
+        [out:json][timeout:25];
+        (
+          ${filters}
+        );
+        out center tags;
+      `;
+    }
+
+    async function getNearbyPlaces(lat, lon, miles, activityChoice) {
+      const query = buildOverpassQuery(lat, lon, miles, activityChoice);
+      const url = `${OVERPASS_URL}?data=${encodeURIComponent(query)}`;
+      const data = await fetchJSON(url);
+
+      if (!data.elements) {
+        throw new Error("PLACES_DATA_MISSING");
+      }
+
+      return data.elements;
+    }
+
+    function getCoordinates(element) {
+      if (typeof element.lat === "number" && typeof element.lon === "number") {
+        return { lat: element.lat, lon: element.lon };
+      }
+
+      if (element.center &&
+          typeof element.center.lat === "number" &&
+          typeof element.center.lon === "number") {
+        return { lat: element.center.lat, lon: element.center.lon };
+      }
+
+      return null;
+    }
+
+    function haversineMiles(lat1, lon1, lat2, lon2) {
+      const toRadians = degrees => degrees * Math.PI / 180;
+      const earthRadiusMiles = 3958.8;
+
+      const dLat = toRadians(lat2 - lat1);
+      const dLon = toRadians(lon2 - lon1);
+
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRadians(lat1)) *
+        Math.cos(toRadians(lat2)) *
+        Math.sin(dLon / 2) ** 2;
+
+      return earthRadiusMiles * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function categoryFor(tags = {}) {
+      if (tags.amenity) return tags.amenity.replaceAll("_", " ");
+      if (tags.tourism) return tags.tourism.replaceAll("_", " ");
+      if (tags.leisure) return tags.leisure.replaceAll("_", " ");
+      return "activity";
+    }
+
+    function indoorOutdoor(tags = {}) {
+      if (tags.indoor === "yes") return "Indoor";
+      if (tags.indoor === "no") return "Outdoor";
+
+      const category = categoryFor(tags);
+
+      const indoor = [
+        "museum", "gallery", "cinema", "bowling alley",
+        "amusement arcade", "restaurant", "cafe",
+        "fast food", "food court", "ice cream"
+      ];
+
+      const outdoor = [
+        "park", "garden", "viewpoint", "zoo", "theme park"
+      ];
+
+      if (indoor.includes(category)) return "Indoor";
+      if (outdoor.includes(category)) return "Outdoor";
+
+      return "Indoor / outdoor";
+    }
+
+    function buildAddress(tags = {}) {
+      if (tags["addr:full"]) return tags["addr:full"];
+
+      const parts = [
+        tags["addr:housenumber"],
+        tags["addr:street"],
+        tags["addr:city"],
+        tags["addr:state"],
+        tags["addr:postcode"]
+      ].filter(Boolean);
+
+      return parts.length ? parts.join(", ") : "Address not available";
+    }
+
+    function weatherIsBadForOutdoors(weather) {
+      const badCodes = [
+        45, 48, 51, 53, 55, 61, 63, 65,
+        71, 73, 75, 80, 81, 82, 95, 96, 99
+      ];
+
+      return (
+        (weather.precipitation || 0) > 0 ||
+        badCodes.includes(weather.weather_code) ||
+        weather.temperature_2m < 40 ||
+        weather.temperature_2m > 90 ||
+        weather.wind_speed_10m >= 25
+      );
+    }
+
+    function weatherReason(place, weather) {
+      const type = place.setting.toLowerCase();
+      const temp = Math.round(weather.temperature_2m);
+      const description =
+        weatherDescriptions[weather.weather_code] || "current weather";
+
+      if (weatherIsBadForOutdoors(weather)) {
+        if (type === "indoor") {
+          return `Since it is ${description.toLowerCase()} and about ${temp}°F, this is a good indoor option.`;
+        }
+
+        if (type === "outdoor") {
+          return `This is an outdoor option, but keep in mind that it is ${description.toLowerCase()} and about ${temp}°F right now.`;
+        }
+
+        return `This gives you some flexibility while the weather is ${description.toLowerCase()} and about ${temp}°F.`;
+      }
+
+      if (type === "outdoor") {
+        return `The weather is ${description.toLowerCase()} and about ${temp}°F, so this could be a nice outdoor choice.`;
+      }
+
+      return `The weather is ${description.toLowerCase()} and about ${temp}°F, and this is still a convenient nearby option.`;
+    }
+
+    function scorePlace(place, weather) {
+      let score = 100 - place.distance * 2;
+      const badWeather = weatherIsBadForOutdoors(weather);
+
+      if (badWeather && place.setting === "Indoor") score += 25;
+      if (!badWeather && place.setting === "Outdoor") score += 20;
+
+      return score;
+    }
+
+    function normalizePlaces(elements, userLat, userLon, settingChoice, maxMiles, weather) {
+      const seen = new Set();
+      const places = [];
+
+      for (const element of elements) {
+        const coords = getCoordinates(element);
+        const tags = element.tags || {};
+        const name = tags.name;
+
+        if (!coords || !name) continue;
+
+        const distance = haversineMiles(
+          userLat, userLon, coords.lat, coords.lon
+        );
+
+        if (distance > maxMiles) continue;
+
+        const setting = indoorOutdoor(tags);
+
+        if (settingChoice === "indoor" && setting === "Outdoor") continue;
+        if (settingChoice === "outdoor" && setting === "Indoor") continue;
+
+        const key = `${name}-${Math.round(coords.lat * 10000)}-${Math.round(coords.lon * 10000)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        const place = {
+          name,
+          category: categoryFor(tags),
+          distance,
+          setting,
+          address: buildAddress(tags),
+          description: tags.description || tags["description:en"] || "",
+          website: tags.website || tags["contact:website"] || ""
+        };
+
+        place.reason = weatherReason(place, weather);
+        place.score = scorePlace(place, weather);
+        places.push(place);
+      }
+
+      return places
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+    }
+
+    function displayWeather(location, weather) {
+      document.getElementById("weatherSection").classList.remove("hidden");
+
+      const locationParts = [
+        location.name,
+        location.admin1,
+        location.country
+      ].filter(Boolean);
+
+      document.getElementById("weatherLocation").textContent =
+        locationParts.join(", ");
+
+      document.getElementById("temp").textContent =
+        `${Math.round(weather.temperature_2m)}°F`;
+
+      document.getElementById("feels").textContent =
+        `${Math.round(weather.apparent_temperature)}°F`;
+
+      document.getElementById("conditions").textContent =
+        weatherDescriptions[weather.weather_code] || "Unknown";
+
+      document.getElementById("wind").textContent =
+        `${Math.round(weather.wind_speed_10m)} mph`;
+    }
+
+    function displayRecommendations(places) {
+      const section = document.getElementById("recommendationSection");
+      const container = document.getElementById("recommendations");
+      section.classList.remove("hidden");
+      container.innerHTML = "";
+
+      if (places.length === 0) {
+        container.innerHTML =
+          "<p>No matching activities were found nearby. Try a larger distance or choose “Either.”</p>";
+        return;
+      }
+
+      places.forEach((place, index) => {
+        const card = document.createElement("article");
+        card.className = "card";
+
+        card.innerHTML = `
+          <h3>${index + 1}. ${escapeHTML(place.name)}</h3>
+          <div class="meta">
+            <span class="badge">${escapeHTML(place.category)}</span>
+            <span class="badge">${escapeHTML(place.setting)}</span>
+            <span class="badge">${place.distance.toFixed(1)} miles away</span>
+          </div>
+          ${place.description ? `<p>${escapeHTML(place.description)}</p>` : ""}
+          <p><strong>Why this fits the weather:</strong> ${escapeHTML(place.reason)}</p>
+          <p><strong>Address:</strong> ${escapeHTML(place.address)}</p>
+          ${place.website ? `<p><a href="${escapeAttribute(place.website)}" target="_blank" rel="noopener">Visit website</a></p>` : ""}
+        `;
+
+        container.appendChild(card);
+      });
+    }
+
+    function escapeHTML(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function escapeAttribute(value) {
+      return String(value).replaceAll('"', "&quot;");
+    }
+
+    async function findActivities() {
+      hideMessage();
+
+      const locationText = document.getElementById("location").value.trim();
+      const miles = Number(document.getElementById("distance").value);
+      const activityChoice = document.getElementById("activity").value;
+      const settingChoice = document.getElementById("setting").value;
+      const button = document.getElementById("findBtn");
+
+      document.getElementById("weatherSection").classList.add("hidden");
+      document.getElementById("recommendationSection").classList.add("hidden");
+
+      if (!locationText) {
+        showMessage("Please enter a city or ZIP code.");
+        return;
+      }
+
+      if (![5, 10, 20, 50].includes(miles)) {
+        showMessage("Please choose a valid travel distance.");
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "Searching...";
+
+      try {
+        const location = await geocodeLocation(locationText);
+
+        let weather;
+        try {
+          weather = await getWeather(location.latitude, location.longitude);
+        } catch (error) {
+          showMessage("I found your location, but the weather service is not responding right now. Please try again.");
+          return;
+        }
+
+        displayWeather(location, weather);
+
+        let rawPlaces;
+        try {
+          rawPlaces = await getNearbyPlaces(
+            location.latitude,
+            location.longitude,
+            miles,
+            activityChoice
+          );
+        } catch (error) {
+          showMessage("The nearby places service is not responding right now. Please try again in a moment.");
+          return;
+        }
+
+        const places = normalizePlaces(
+          rawPlaces,
+          location.latitude,
+          location.longitude,
+          settingChoice,
+          miles,
+          weather
+        );
+
+        displayRecommendations(places);
+
+      } catch (error) {
+        if (error.message === "LOCATION_NOT_FOUND") {
+          showMessage("I could not find that location. Check the spelling or try adding a state or country.");
+        } else if (!navigator.onLine) {
+          showMessage("You appear to be offline. Check your internet connection and try again.");
+        } else {
+          showMessage("Something went wrong while loading the data. Please try again.");
+        }
+      } finally {
+        button.disabled = false;
+        button.textContent = "Find Something To Do";
+      }
+    }
+  </script>
+</body>
+</html>
