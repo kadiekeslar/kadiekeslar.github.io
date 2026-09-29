@@ -26,7 +26,10 @@ const els = {
 
 async function explore(query) {
   query = query.trim();
-  if (!query) return;
+
+  if (!query) {
+    return;
+  }
 
   setLoading(true);
   setStatus(`SEARCHING / ${query.toUpperCase()}`);
@@ -40,7 +43,9 @@ async function explore(query) {
 
     if (!response.ok) {
       throw new Error(
-        data.detail || data.error || `API returned ${response.status}`
+        data.detail ||
+        data.error ||
+        `API returned ${response.status}`
       );
     }
 
@@ -52,26 +57,19 @@ async function explore(query) {
     renderSources(data.sources || []);
 
     els.emptyState.classList.add("hidden");
-    setStatus(`LOADED / ${data.centerLabel || query}`);
 
-    const selectedCenterNode = cy.getElementById(data.center);
+    setStatus(
+      `LOADED / ${data.centerLabel || query}`
+    );
+
+    const selectedCenterNode =
+      cy.getElementById(data.center);
 
     if (selectedCenterNode.length) {
       selectedCenterNode.addClass("center-node");
       showNodeDetails(selectedCenterNode);
-
-      setTimeout(() => {
-        cy.animate(
-          {
-            center: { eles: selectedCenterNode },
-            zoom: 0.92
-          },
-          {
-            duration: 420
-          }
-        );
-      }, 200);
     }
+
   } catch (error) {
     console.error(error);
 
@@ -79,12 +77,16 @@ async function explore(query) {
 
     els.detailType.textContent = "ERROR";
     els.detailLabel.textContent = query;
-    els.detailSummary.textContent = error.message;
+    els.detailSummary.textContent =
+      error.message;
+
     els.verseText.classList.add("hidden");
+
   } finally {
     setLoading(false);
   }
 }
+
 
 function renderGraph(data) {
   if (cy) {
@@ -94,103 +96,133 @@ function renderGraph(data) {
   cy = cytoscape({
     container: document.getElementById("cy"),
 
-    elements: [...data.nodes, ...data.edges],
+    elements: [
+      ...data.nodes,
+      ...data.edges
+    ],
 
     style: [
       {
         selector: "node",
+
         style: {
           "background-color": "#dce6ed",
-          label: "data(label)",
-          color: "#d4dde2",
+          "label": "data(label)",
+          "color": "#d4dde2",
+
           "font-size": "10px",
           "font-family": "ui-monospace, monospace",
+
           "text-valign": "bottom",
           "text-margin-y": "9px",
-          width: 23,
-          height: 23,
+
+          "width": 23,
+          "height": 23,
+
           "border-width": 1,
           "border-color": "#75828b",
+
           "transition-property":
             "opacity, width, height, border-width",
+
           "transition-duration": "170ms"
         }
       },
 
       {
         selector: 'node[type = "person"]',
+
         style: {
-          shape: "round-rectangle",
+          "shape": "round-rectangle",
           "background-color": "#9eb6c7",
-          width: 31,
-          height: 31
+
+          "width": 31,
+          "height": 31
         }
       },
 
       {
         selector: 'node[type = "place"]',
+
         style: {
-          shape: "triangle",
+          "shape": "triangle",
           "background-color": "#9db8a8",
-          width: 31,
-          height: 31
+
+          "width": 31,
+          "height": 31
         }
       },
 
       {
         selector: 'node[type = "event"]',
+
         style: {
-          shape: "hexagon",
+          "shape": "hexagon",
           "background-color": "#bba58e",
-          width: 32,
-          height: 32
+
+          "width": 32,
+          "height": 32
         }
       },
 
       {
         selector: 'node[type = "topic"]',
+
         style: {
-          shape: "diamond",
+          "shape": "diamond",
           "background-color": "#c3b2d7",
-          width: 46,
-          height: 46,
+
+          "width": 46,
+          "height": 46,
+
           "font-size": "12px"
         }
       },
 
       {
         selector: 'node[type = "subtheme"]',
+
         style: {
-          shape: "hexagon",
+          "shape": "hexagon",
           "background-color": "#798894",
-          width: 35,
-          height: 35,
+
+          "width": 35,
+          "height": 35,
+
           "font-size": "10px"
         }
       },
 
       {
         selector: 'node[type = "group"]',
+
         style: {
-          shape: "rectangle",
+          "shape": "rectangle",
           "background-color": "#a5adb1",
-          width: 28,
-          height: 28
+
+          "width": 28,
+          "height": 28
         }
       },
 
       {
         selector: "edge",
+
         style: {
-          width: 1,
+          "width": 1,
+
           "line-color": "#52606a",
-          opacity: 0.68,
+
+          "opacity": 0.68,
+
           "curve-style": "bezier"
         }
       },
 
       {
-        selector: 'edge[type = "cross-reference"]',
+        selector:
+          'edge[type = "cross-reference"]',
+
         style: {
           "line-color": "#72818b"
         }
@@ -199,6 +231,7 @@ function renderGraph(data) {
       {
         selector:
           'edge[type = "context"], edge[type = "reference"]',
+
         style: {
           "line-style": "dashed",
           "line-color": "#687680"
@@ -208,6 +241,7 @@ function renderGraph(data) {
       {
         selector:
           'edge[type = "topic"], edge[type = "topic-match"], edge[type = "relationship"]',
+
         style: {
           "line-style": "dotted",
           "line-color": "#80748c"
@@ -215,88 +249,130 @@ function renderGraph(data) {
       },
 
       {
-        selector: 'edge[type = "direct-match"]',
+        selector:
+          'edge[type = "direct-match"]',
+
         style: {
-          width: 1.5,
+          "width": 1.5,
           "line-color": "#8e9ba4"
         }
       },
 
       {
         selector: ".faded",
+
         style: {
-          opacity: 0.1
+          "opacity": 0.1
         }
       },
 
       {
         selector: ".focused",
+
         style: {
           "border-width": 3,
-          width: 35,
-          height: 35
+
+          "width": 35,
+          "height": 35
         }
       },
 
       {
         selector: ".center-node",
+
         style: {
           "border-width": 4,
           "border-color": "#ffffff",
-          width: 50,
-          height: 50
+
+          "width": 50,
+          "height": 50
         }
       }
     ],
 
     layout: {
       name: "cose",
-      animate: true,
+
+      animate: false,
+
       padding: 65,
+
       nodeRepulsion: 210000,
+
       idealEdgeLength: 145,
+
       edgeElasticity: 75,
+
       gravity: 0.48,
+
       numIter: 1400
     },
 
     minZoom: 0.18,
+
     maxZoom: 2.8
   });
 
 
-  const centerNode = cy.getElementById(data.center);
+  const centerNode =
+    cy.getElementById(data.center);
 
-if (centerNode.length) {
-  const centerX = cy.width() / 2;
-  const centerY = cy.height() / 2;
+  if (centerNode.length) {
 
-  centerNode.position({
-    x: centerX,
-    y: centerY
-  });
+    const centerX =
+      cy.width() / 2;
 
-  centerNode.lock();
-}
+    const centerY =
+      cy.height() / 2;
 
-  cy.on("tap", "node", event => {
-    const node = event.target;
+    centerNode.position({
+      x: centerX,
+      y: centerY
+    });
 
-    focusNode(node);
-    showNodeDetails(node);
-  });
+    centerNode.lock();
 
-  cy.on("tap", event => {
-    if (event.target === cy) {
-      resetFocus();
+    cy.center(centerNode);
+
+    cy.zoom(0.92);
+  }
+
+
+  cy.on(
+    "tap",
+    "node",
+    event => {
+
+      const node =
+        event.target;
+
+      focusNode(node);
+
+      showNodeDetails(node);
     }
-  });
+  );
+
+
+  cy.on(
+    "tap",
+    event => {
+
+      if (event.target === cy) {
+        resetFocus();
+      }
+    }
+  );
 }
+
 
 function focusNode(node) {
-  cy.elements().removeClass("faded focused");
+  cy.elements()
+    .removeClass(
+      "faded focused"
+    );
 
-  const neighborhood = node.closedNeighborhood();
+  const neighborhood =
+    node.closedNeighborhood();
 
   cy.elements()
     .not(neighborhood)
@@ -306,48 +382,131 @@ function focusNode(node) {
 
   cy.animate(
     {
-      center: { eles: node },
-      zoom: Math.max(cy.zoom(), 0.95)
+      center: {
+        eles: node
+      },
+
+      zoom:
+        Math.max(
+          cy.zoom(),
+          0.95
+        )
     },
+
     {
       duration: 300
     }
   );
 }
 
+
 function resetFocus() {
-  if (!cy) return;
-
-  cy.elements().removeClass("faded focused");
-}
-
-function showNodeDetails(node) {
-  const data = node.data();
-
-  els.detailType.textContent =
-    String(data.type || "node").toUpperCase();
-
-  els.detailLabel.textContent =
-    data.label || data.id;
-
-  els.detailSummary.textContent =
-    data.summary || "No description available.";
-
-  if (data.text) {
-    els.verseText.textContent = data.text;
-    els.verseText.classList.remove("hidden");
-  } else {
-    els.verseText.textContent = "";
-    els.verseText.classList.add("hidden");
+  if (!cy) {
+    return;
   }
 
+  cy.elements()
+    .removeClass(
+      "faded focused"
+    );
+
+  const centerNode =
+    currentData
+      ? cy.getElementById(
+          currentData.center
+        )
+      : null;
+
+  if (
+    centerNode &&
+    centerNode.length
+  ) {
+    cy.animate(
+      {
+        center: {
+          eles: centerNode
+        },
+
+        zoom: 0.92
+      },
+
+      {
+        duration: 300
+      }
+    );
+  }
+}
+
+
+function showNodeDetails(node) {
+  const data =
+    node.data();
+
+  els.detailType.textContent =
+    String(
+      data.type || "node"
+    ).toUpperCase();
+
+  els.detailLabel.textContent =
+    data.label ||
+    data.id;
+
+  els.detailSummary.textContent =
+    data.summary ||
+    "No description available.";
+
+
+  if (data.text) {
+
+    els.verseText.textContent =
+      data.text;
+
+    els.verseText.classList.remove(
+      "hidden"
+    );
+
+  } else {
+
+    els.verseText.textContent =
+      "";
+
+    els.verseText.classList.add(
+      "hidden"
+    );
+  }
+
+
   const meta = [
-    ["ID", data.id],
-    ["TYPE", data.type],
-    ["REFERENCE", data.reference],
-    ["RELEVANCE", data.relevance],
-    ["SCORE", data.score],
-    ["SOURCE", data.sourceName]
+    [
+      "ID",
+      data.id
+    ],
+
+    [
+      "TYPE",
+      data.type
+    ],
+
+    [
+      "REFERENCE",
+      data.reference
+    ],
+
+    [
+      "RELEVANCE",
+      data.relevance
+    ],
+
+    [
+      "SCORE",
+      data.score
+    ],
+
+    [
+      "SOURCE",
+      data.sourceName
+    ]
+
   ].filter(
     ([, value]) =>
       value !== undefined &&
@@ -355,122 +514,193 @@ function showNodeDetails(node) {
       value !== ""
   );
 
-  els.detailMeta.innerHTML = meta
-    .map(
-      ([label, value]) => `
-        <div class="meta-row">
-          <span class="meta-label">
-            ${escapeHtml(label)}
-          </span>
 
-          <span class="meta-value">
-            ${escapeHtml(String(value))}
-          </span>
-        </div>
-      `
-    )
-    .join("");
+  els.detailMeta.innerHTML =
+    meta
+      .map(
+        ([label, value]) => `
+          <div class="meta-row">
 
-  const connectedEdges = node.connectedEdges();
+            <span class="meta-label">
+              ${escapeHtml(label)}
+            </span>
+
+            <span class="meta-value">
+              ${escapeHtml(
+                String(value)
+              )}
+            </span>
+
+          </div>
+        `
+      )
+      .join("");
+
+
+  const connectedEdges =
+    node.connectedEdges();
 
   els.connectionCount.textContent =
     connectedEdges.length;
 
+
   const items = [];
 
-  connectedEdges.forEach(edge => {
-    const d = edge.data();
 
-    const source =
-      cy.getElementById(d.source);
+  connectedEdges.forEach(
+    edge => {
 
-    const target =
-      cy.getElementById(d.target);
+      const d =
+        edge.data();
 
-    const other =
-      source.id() === node.id()
-        ? target
-        : source;
+      const source =
+        cy.getElementById(
+          d.source
+        );
 
-    items.push(`
-      <div
-        class="connection-item"
-        data-node-id="${escapeHtml(other.id())}"
-      >
-        <div class="connection-target">
-          ${escapeHtml(
-            other.data("label") || other.id()
-          )}
+      const target =
+        cy.getElementById(
+          d.target
+        );
+
+      const other =
+        source.id() === node.id()
+          ? target
+          : source;
+
+
+      items.push(`
+        <div
+          class="connection-item"
+          data-node-id="${escapeHtml(
+            other.id()
+          )}"
+        >
+
+          <div class="connection-target">
+
+            ${escapeHtml(
+              other.data("label") ||
+              other.id()
+            )}
+
+          </div>
+
+
+          <div class="connection-label">
+
+            ${escapeHtml(
+              String(
+                d.type ||
+                "connection"
+              ).toUpperCase()
+            )}
+
+            /
+
+            ${escapeHtml(
+              d.label || ""
+            )}
+
+          </div>
+
+
+          ${
+            d.explanation
+              ? `
+                <div
+                  class="connection-explanation"
+                >
+                  ${escapeHtml(
+                    d.explanation
+                  )}
+                </div>
+              `
+              : ""
+          }
+
         </div>
+      `);
+    }
+  );
 
-        <div class="connection-label">
-          ${escapeHtml(
-            String(
-              d.type || "connection"
-            ).toUpperCase()
-          )}
-          /
-          ${escapeHtml(d.label || "")}
-        </div>
-
-        ${
-          d.explanation
-            ? `
-              <div class="connection-explanation">
-                ${escapeHtml(d.explanation)}
-              </div>
-            `
-            : ""
-        }
-      </div>
-    `);
-  });
 
   els.connectionList.innerHTML =
     items.length
+
       ? items.join("")
+
       : `
         <div class="empty-state">
           No connections found.
         </div>
       `;
 
-  document
-    .querySelectorAll(".connection-item")
-    .forEach(item => {
-      item.addEventListener("click", () => {
-        const target =
-          cy.getElementById(
-            item.dataset.nodeId
-          );
 
-        if (target.length) {
-          focusNode(target);
-          showNodeDetails(target);
-        }
-      });
-    });
+  document
+    .querySelectorAll(
+      ".connection-item"
+    )
+    .forEach(
+      item => {
+
+        item.addEventListener(
+          "click",
+          () => {
+
+            const target =
+              cy.getElementById(
+                item.dataset.nodeId
+              );
+
+            if (target.length) {
+
+              focusNode(
+                target
+              );
+
+              showNodeDetails(
+                target
+              );
+            }
+          }
+        );
+      }
+    );
 }
 
+
 function renderFilters(nodes) {
+
   const counts = {};
 
-  for (const item of nodes) {
+
+  for (
+    const item of nodes
+  ) {
+
     const type =
-      item.data.type || "node";
+      item.data.type ||
+      "node";
 
     counts[type] =
       (counts[type] || 0) + 1;
   }
 
+
   els.filterList.innerHTML =
     Object.entries(counts)
-      .sort(([a], [b]) =>
-        a.localeCompare(b)
+
+      .sort(
+        ([a], [b]) =>
+          a.localeCompare(b)
       )
+
       .map(
         ([type, count]) => `
+
           <label class="filter-row">
+
             <input
               type="checkbox"
               value="${escapeHtml(type)}"
@@ -484,57 +714,100 @@ function renderFilters(nodes) {
             <span class="filter-count">
               ${count}
             </span>
+
           </label>
         `
       )
+
       .join("");
 
+
   els.filterList
-    .querySelectorAll("input")
-    .forEach(input => {
-      input.addEventListener(
-        "change",
-        applyFilters
-      );
-    });
+    .querySelectorAll(
+      "input"
+    )
+    .forEach(
+      input => {
+
+        input.addEventListener(
+          "change",
+          applyFilters
+        );
+      }
+    );
 }
 
+
 function applyFilters() {
-  if (!cy) return;
+
+  if (!cy) {
+    return;
+  }
+
 
   const selected =
     Array.from(
-      els.filterList.querySelectorAll(
-        "input:checked"
-      )
-    ).map(input => input.value);
-
-  cy.nodes().forEach(node => {
-    node.style(
-      "display",
-      selected.includes(
-        node.data("type")
-      )
-        ? "element"
-        : "none"
+      els.filterList
+        .querySelectorAll(
+          "input:checked"
+        )
+    )
+    .map(
+      input =>
+        input.value
     );
-  });
 
-  cy.edges().forEach(edge => {
-    const visible =
-      edge.source().style("display") !==
-        "none" &&
-      edge.target().style("display") !==
-        "none";
 
-    edge.style(
-      "display",
-      visible ? "element" : "none"
+  cy.nodes()
+    .forEach(
+      node => {
+
+        node.style(
+          "display",
+
+          selected.includes(
+            node.data("type")
+          )
+
+            ? "element"
+
+            : "none"
+        );
+      }
     );
-  });
+
+
+  cy.edges()
+    .forEach(
+      edge => {
+
+        const visible =
+
+          edge.source()
+            .style("display") !==
+            "none"
+
+          &&
+
+          edge.target()
+            .style("display") !==
+            "none";
+
+
+        edge.style(
+          "display",
+
+          visible
+            ? "element"
+            : "none"
+        );
+      }
+    );
 }
 
+
 function renderStats(data) {
+
   els.nodeCount.textContent =
     data.nodes.length;
 
@@ -542,35 +815,51 @@ function renderStats(data) {
     data.edges.length;
 
   els.queryType.textContent =
-    data.queryType || "—";
+    data.queryType ||
+    "—";
 }
 
+
 function renderSources(sources) {
+
   els.sourceList.innerHTML =
+
     sources.length
+
       ? sources
           .map(
             source => `
-              <div class="source-item">
-                ${escapeHtml(source)}
+              <div
+                class="source-item"
+              >
+                ${escapeHtml(
+                  source
+                )}
               </div>
             `
           )
           .join("")
+
       : "No source information returned.";
 }
 
+
 function setLoading(isLoading) {
-  els.loadingState.classList.toggle(
-    "hidden",
-    !isLoading
-  );
+
+  els.loadingState
+    .classList
+    .toggle(
+      "hidden",
+      !isLoading
+    );
 
   els.searchButton.disabled =
     isLoading;
 }
 
+
 function setStatus(message) {
+
   els.apiStatus.textContent =
     message;
 
@@ -578,47 +867,86 @@ function setStatus(message) {
     message;
 }
 
+
 function runSearch() {
+
   explore(
     els.searchInput.value
   );
 }
 
+
 function escapeHtml(value) {
+
   return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
 }
 
-els.searchButton.addEventListener(
-  "click",
-  runSearch
-);
 
-els.searchInput.addEventListener(
-  "keydown",
-  event => {
-    if (event.key === "Enter") {
-      runSearch();
+els.searchButton
+  .addEventListener(
+    "click",
+    runSearch
+  );
+
+
+els.searchInput
+  .addEventListener(
+    "keydown",
+    event => {
+
+      if (
+        event.key ===
+        "Enter"
+      ) {
+        runSearch();
+      }
     }
-  }
-);
+  );
+
 
 document
-  .querySelectorAll("[data-query]")
-  .forEach(button => {
-    button.addEventListener(
-      "click",
-      () => {
-        els.searchInput.value =
-          button.dataset.query;
+  .querySelectorAll(
+    "[data-query]"
+  )
+  .forEach(
+    button => {
 
-        explore(
-          button.dataset.query
-        );
-      }
-    );
-  });
+      button.addEventListener(
+        "click",
+        () => {
+
+          els.searchInput.value =
+            button.dataset.query;
+
+          explore(
+            button.dataset.query
+          );
+        }
+      );
+    }
+  );
