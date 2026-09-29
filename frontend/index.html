@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scripture Graph</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://unpkg.com/cytoscape@3.31.2/dist/cytoscape.min.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">SG</span>
+        <div>
+          <div class="brand-title">SCRIPTURE GRAPH</div>
+          <div class="brand-subtitle">BIBLICAL KNOWLEDGE NETWORK</div>
+        </div>
+      </div>
+
+      <div class="search-wrap">
+        <input
+          id="searchInput"
+          type="search"
+          placeholder="Search fear, Moses, John 3:16, what does Jesus say about fear..."
+          autocomplete="off"
+        />
+        <button id="searchButton">EXPLORE</button>
+      </div>
+
+      <div class="system-status">
+        <span class="status-dot"></span>
+        <span id="apiStatus">READY</span>
+      </div>
+    </header>
+
+    <aside class="left-panel">
+      <div class="panel-heading">FILTER / NODE TYPE</div>
+      <div id="filterList"></div>
+
+      <div class="legend">
+        <div class="panel-heading">RELATIONSHIPS</div>
+        <div><span class="line-key solid"></span>CROSS REFERENCE</div>
+        <div><span class="line-key dashed"></span>CONTEXT / REFERENCE</div>
+        <div><span class="line-key dotted"></span>TOPIC / SUBTHEME</div>
+      </div>
+
+      <div class="stats">
+        <div class="panel-heading">NETWORK</div>
+        <div class="stat"><span>NODES</span><strong id="nodeCount">0</strong></div>
+        <div class="stat"><span>EDGES</span><strong id="edgeCount">0</strong></div>
+        <div class="stat"><span>MODE</span><strong id="queryType">—</strong></div>
+      </div>
+
+      <div class="source-block">
+        <div class="panel-heading">DATA SOURCES</div>
+        <div id="sourceList">Search to load sources.</div>
+      </div>
+    </aside>
+
+    <main class="graph-stage">
+      <div class="graph-label">NETWORK / DRAG • ZOOM • SELECT</div>
+      <div id="cy"></div>
+
+      <div id="emptyState" class="empty-stage">
+        <div class="empty-kicker">SEARCH THE BIBLE AS A NETWORK</div>
+        <h1>Start anywhere.</h1>
+        <p>Broad topics become organized clusters of real Bible passages.</p>
+        <div class="examples">
+          <button data-query="fear">fear</button>
+          <button data-query="what does Jesus say about fear?">Jesus on fear</button>
+          <button data-query="Moses">Moses</button>
+          <button data-query="Romans 8:28">Romans 8:28</button>
+        </div>
+      </div>
+
+      <div id="loadingState" class="loading-stage hidden">
+        <div class="loader"></div>
+        <div>RETRIEVING + ORGANIZING SCRIPTURE</div>
+      </div>
+    </main>
+
+    <aside class="inspector">
+      <div class="panel-heading">INSPECTOR</div>
+      <div class="inspector-type" id="detailType">NO SELECTION</div>
+      <h1 id="detailLabel">Scripture Graph</h1>
+      <p class="detail-summary" id="detailSummary">
+        Search a verse, person, place, event, topic, or natural-language Bible question.
+      </p>
+
+      <blockquote id="verseText" class="verse-text hidden"></blockquote>
+      <div id="detailMeta" class="detail-meta"></div>
+
+      <div class="connections-header">
+        <span>CONNECTIONS</span>
+        <span id="connectionCount">—</span>
+      </div>
+
+      <div id="connectionList" class="connection-list">
+        <div class="empty-state">No node selected.</div>
+      </div>
+    </aside>
+
+    <footer class="footerbar">
+      <span>HW4 / AI + RETRIEVED BIBLE DATA</span>
+      <span id="footerMessage">READY</span>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
