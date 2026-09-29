@@ -24,6 +24,7 @@ const els = {
   sourceList: document.getElementById("sourceList")
 };
 
+
 async function explore(query) {
   query = query.trim();
 
@@ -77,8 +78,7 @@ async function explore(query) {
 
     els.detailType.textContent = "ERROR";
     els.detailLabel.textContent = query;
-    els.detailSummary.textContent =
-      error.message;
+    els.detailSummary.textContent = error.message;
 
     els.verseText.classList.add("hidden");
 
@@ -291,25 +291,40 @@ function renderGraph(data) {
     ],
 
     layout: {
-      name: "cose",
+      name: "concentric",
 
       animate: false,
 
-      padding: 65,
+      padding: 90,
 
-      nodeRepulsion: 210000,
+      minNodeSpacing: 80,
 
-      idealEdgeLength: 145,
+      avoidOverlap: true,
 
-      edgeElasticity: 75,
+      startAngle: -Math.PI / 2,
 
-      gravity: 0.48,
+      clockwise: true,
 
-      numIter: 1400
+      equidistant: true,
+
+      concentric: function(node) {
+        if (node.id() === data.center) {
+          return 100;
+        }
+
+        if (node.data("type") === "subtheme") {
+          return 60;
+        }
+
+        return 10;
+      },
+
+      levelWidth: function() {
+        return 20;
+      }
     },
 
     minZoom: 0.18,
-
     maxZoom: 2.8
   });
 
@@ -318,23 +333,13 @@ function renderGraph(data) {
     cy.getElementById(data.center);
 
   if (centerNode.length) {
-
-    const centerX =
-      cy.width() / 2;
-
-    const centerY =
-      cy.height() / 2;
-
-    centerNode.position({
-      x: centerX,
-      y: centerY
-    });
-
+    centerNode.addClass("center-node");
     centerNode.lock();
 
-    cy.center(centerNode);
-
-    cy.zoom(0.92);
+    setTimeout(() => {
+      cy.fit(cy.elements(), 90);
+      cy.center(centerNode);
+    }, 50);
   }
 
 
@@ -347,7 +352,6 @@ function renderGraph(data) {
         event.target;
 
       focusNode(node);
-
       showNodeDetails(node);
     }
   );
@@ -425,9 +429,7 @@ function resetFocus() {
       {
         center: {
           eles: centerNode
-        },
-
-        zoom: 0.92
+        }
       },
 
       {
