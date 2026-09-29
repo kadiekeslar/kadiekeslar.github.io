@@ -54,16 +54,16 @@ async function explore(query) {
     els.emptyState.classList.add("hidden");
     setStatus(`LOADED / ${data.centerLabel || query}`);
 
-    const centerNode = cy.getElementById(data.center);
+    const selectedCenterNode = cy.getElementById(data.center);
 
-    if (centerNode.length) {
-      centerNode.addClass("center-node");
-      showNodeDetails(centerNode);
+    if (selectedCenterNode.length) {
+      selectedCenterNode.addClass("center-node");
+      showNodeDetails(selectedCenterNode);
 
       setTimeout(() => {
         cy.animate(
           {
-            center: { eles: centerNode },
+            center: { eles: selectedCenterNode },
             zoom: 0.92
           },
           {
@@ -263,6 +263,21 @@ function renderGraph(data) {
     minZoom: 0.18,
     maxZoom: 2.8
   });
+
+
+  const centerNode = cy.getElementById(data.center);
+
+if (centerNode.length) {
+  const centerX = cy.width() / 2;
+  const centerY = cy.height() / 2;
+
+  centerNode.position({
+    x: centerX,
+    y: centerY
+  });
+
+  centerNode.lock();
+}
 
   cy.on("tap", "node", event => {
     const node = event.target;
