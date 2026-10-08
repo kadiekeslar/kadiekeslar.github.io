@@ -236,3 +236,6 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .saved-outline { padding-bottom: 20px; border-bottom: 1px solid var(--line); font-size: 13px; line-height: 1.7; }
 
 .insight-loading { color: #d8bd79; padding: 12px 0; }
+
+#studyQuestions { color: var(--text); padding-left: 22px; }
+#studyQuestions li { margin: 6px 0; overflow-wrap: anywhere; }

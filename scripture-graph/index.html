@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Scripture Graph · Compare & Study</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=identity-fix" />
   <script defer src="https://unpkg.com/cytoscape@3.31.2/dist/cytoscape.min.js"></script>
-  <script defer src="graph-utils.js"></script>
-  <script defer src="app.js"></script>
+  <script defer src="graph-utils.js?v=identity-fix"></script>
+  <script defer src="app.js?v=identity-fix"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -35,7 +35,7 @@
     </aside>
     <main class="graph-stage">
       <section id="comparisonInsights" class="comparison-insights hidden" aria-label="Comparison findings">
-        <div class="insights-header"><div><div class="panel-heading">READ THE CONNECTIONS</div><h2>Similarities & differences</h2></div><div><button id="saveOutlineButton">Save study outline</button><button id="toggleInsightsButton" aria-expanded="true">Collapse</button></div></div>
+        <div class="insights-header"><div><div class="panel-heading">READ THE CONNECTIONS</div><h2>Similarities & differences</h2></div><div><button id="retryComparisonButton" class="hidden">Retry comparison</button><button id="saveOutlineButton">Save study outline</button><button id="toggleInsightsButton" aria-expanded="true">Collapse</button></div></div>
         <div id="insightsBody"><p id="insightsStatus" class="help-text" role="status"></p><p id="comparisonOverview"></p><div class="insights-columns"><section><h3>Similarities</h3><div id="similarityCards"></div></section><section><h3>Differences in emphasis</h3><div id="differenceCards"></div></section></div><details class="study-questions"><summary>Questions for your study</summary><ol id="studyQuestions"></ol></details></div>
       </section>
 

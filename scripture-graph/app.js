@@ -272,6 +272,7 @@ function citationButtons(container, references, side) {
 function renderInsights(report, message, loading = false) {
   currentReport = report;
   $('comparisonInsights').setAttribute('aria-busy', String(loading));
+  $('retryComparisonButton').classList.add('hidden');
   $('comparisonInsights').classList.remove('hidden'); $('comparisonOverview').textContent=report.overview; $('insightsStatus').textContent=message;
   $('similarityCards').replaceChildren(); $('differenceCards').replaceChildren();
   for (const [kind,items,id] of [['similarity',report.similarities,'similarityCards'],['difference',report.differences,'differenceCards']]) {
@@ -313,7 +314,10 @@ async function loadComparison(data, number) {
     if(number!==requestNumber) return;
     insightsCache.set(key,report); if(insightsCache.size>20) insightsCache.delete(insightsCache.keys().next().value);
     renderInsights(report,'AI-assisted interpretation · based on retrieved passages, with evidence for each finding.');
-  } catch(_) { if(number===requestNumber) renderInsights(preview,'Text-based preview · AI comparison is unavailable right now. You can still explore and save this study.'); }
+  } catch(_) { if(number===requestNumber) {
+    renderInsights(preview,'AI comparison could not finish. The findings below use word matches only. Retry for a deeper comparison.');
+    $('retryComparisonButton').classList.remove('hidden');
+  } }
   finally {clearTimeout(timer); if(insightsController===controller) insightsController=null;}
 }
 async function loadExplanations(query, number) {
@@ -331,6 +335,7 @@ async function loadExplanations(query, number) {
   } catch(_) {if(number===requestNumber) $('footerMessage').textContent='Graph ready · AI explanations unavailable';}
   finally {clearTimeout(timer); if(backgroundController===controller) backgroundController=null;}
 }
+$('retryComparisonButton').addEventListener('click',()=> { if(currentData?.comparison) loadComparison(currentData,requestNumber); });
 $('themeLinks').addEventListener('change',applyFilters);
 $('toggleInsightsButton').addEventListener('click',()=> {const collapsed=$('insightsBody').classList.toggle('hidden'); $('toggleInsightsButton').textContent=collapsed?'Expand':'Collapse'; $('toggleInsightsButton').setAttribute('aria-expanded',String(!collapsed)); fitGraph();});
 $('saveOutlineButton').addEventListener('click',()=> {

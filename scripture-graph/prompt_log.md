@@ -74,3 +74,7 @@ These are AI-generated changes. Student manual code contributions, actual focuse
 User prompt (verbatim): “while similarites are loading add loading instead of just nothing found”
 
 Changed the comparison status and empty finding placeholders to indicate loading while the AI request is pending. The loading state ends when the AI result arrives or the request fails; a failed request restores the text-based preview.
+
+## Incorrect Jesus/God result
+
+The user reported a Jesus search displaying Colossians 4:11 (Jesus called Justus), failed AI comparison, and blank numbered questions. Corrected backend identity resolution, diversified retrieved entity references, and added one validation retry. Frontend adds a Retry comparison button, rejects blank questions, and versions assets to avoid mixed cached code.
