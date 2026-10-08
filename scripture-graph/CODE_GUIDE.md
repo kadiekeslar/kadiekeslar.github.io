@@ -106,3 +106,17 @@ Record only what actually happened: original wording/configuration, your new con
 - Why does saving not erase an old note? Duplicate passage IDs are skipped when adding entries.
 - What happened in the Jesus bug? Exact dataset name matching selected Justus; common-name resolution needed an explicit correction and regression test.
 - What remains limited? Mobile layout, external service delays, and the scope/quality of a limited retrieved selection.
+
+## Notebook readability update
+
+`app.js` now has eight numbered sections. Start with section 2 for browser storage, then section 5 for display, and sections 6–7 for folder and save actions. `getElement("folderTitle")` means `document.getElementById("folderTitle")`.
+
+- `loadNotebook()` checks stored folders and keeps compatible older data.
+- `updateNotebookCounts()` calls `renderFolderList()`, `renderDeletedFolders()`, and `renderFolderSummary()`. It does not replace the note textarea.
+- `renderNotebook()` decides what to show. `createSavedOutline()`, `createSavedFinding()`, `createNotebookEmptyState()`, and `createSavedPassageCard()` build those pieces.
+- `createNotebookFolder()` and `renameNotebookFolder()` handle their forms.
+- `reviewSave()` snapshots the selected item. `confirmNotebookSave()` adds missing passages while keeping existing notes.
+- `deleteNotebookFolder()` moves the whole folder into trash. `restoreFolder()` restores it.
+- `exportNotebookFolder()` exports the complete folder even when the notebook search hides some passages.
+
+Each passage card’s input handler changes `passage.note` and calls `persistNotebook()`. It does not call `renderNotebook()`, so typing does not rebuild the textarea and reset the cursor.

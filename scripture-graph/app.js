@@ -4,6 +4,10 @@
  * -> save/delete events -> comparison/background explanation requests.
  * Pure data transformations live in graph-utils.js; this file handles the UI.
  */
+// -----------------------------------------------------------------------------
+// 1. CONFIGURATION AND SHARED STATE
+// -----------------------------------------------------------------------------
+
 /* Set ?api=http://127.0.0.1:5000 for local backend development. */
 const localAPI = new URLSearchParams(location.search).get("api");
 const API_BASE =
@@ -18,8 +22,10 @@ const {
   validateComparison,
   buildStudyOutline,
 } = ScriptureGraphUtils;
-// A small DOM helper: $("folderTitle") means document.getElementById("folderTitle").
-const $ = (id) => document.getElementById(id);
+// Find an HTML element by its id. This keeps repeated DOM lookups short.
+function getElement(id) {
+  return document.getElementById(id);
+}
 const escapeHtml = (value) =>
   String(value ?? "").replace(
     /[&<>"']/g,
@@ -32,18 +38,23 @@ const escapeHtml = (value) =>
         "'": "&#039;",
       })[c],
   );
-let cy = null,
-  currentData = null,
-  selectedPassage = null;
+// These values change as the user searches and selects passages.
+let cy = null; // The Cytoscape graph currently shown on screen.
+let currentData = null; // The passages and relationships from the latest search.
+let selectedPassage = null; // The passage the user can save.
 let pendingSave = null;
-let requestNumber = 0,
-  activeController = null,
-  lastSearch = null;
+let requestNumber = 0;
+let activeController = null;
+let lastSearch = null;
 const cache = new Map();
 const insightsCache = new Map();
-let currentReport = null,
-  insightsController = null,
-  backgroundController = null;
+let currentReport = null;
+let insightsController = null;
+let backgroundController = null;
+// -----------------------------------------------------------------------------
+// 2. NOTEBOOK STORAGE: LOAD AND SAVE
+// -----------------------------------------------------------------------------
+
 // Notebook data belongs to this browser, not the Flask server. Keep the v1 key
 // so the redesigned folders can still open earlier saved studies.
 const STORAGE_KEY = "scripture-graph-notebook-v1";
@@ -52,96 +63,127 @@ let notebook = {
   trash: [],
   collections: [{ id: "default", name: "My study", entries: [] }],
 };
-try {
-  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-  if (saved) {
-    const valid =
-      saved.version === 1 &&
-      Array.isArray(saved.collections) &&
-      saved.collections.length > 0 &&
-      saved.collections.every(
-        (c) =>
-          typeof c.id === "string" &&
-          typeof c.name === "string" &&
-          Array.isArray(c.entries) &&
-          c.entries.every((e) =>
-            ["id", "reference", "text", "source", "query", "note"].every(
-              (k) => typeof e[k] === "string",
-            ),
-          ),
-      );
-    if (!valid) throw new Error("Invalid stored notebook");
-    saved.trash = Array.isArray(saved.trash)
-      ? saved.trash.filter(
-          (c) =>
-            typeof c.id === "string" &&
-            typeof c.name === "string" &&
-            Array.isArray(c.entries) &&
-            c.entries.every((e) =>
-              ["id", "reference", "text", "source", "query", "note"].every(
-                (k) => typeof e[k] === "string",
-              ),
-            ),
-        )
-      : [];
-    [...saved.collections, ...saved.trash].forEach((c) => {
-      const o = c.outline;
-      if (
-        o &&
-        (typeof o.overview !== "string" ||
-          !Array.isArray(o.similarities) ||
-          !Array.isArray(o.differences) ||
-          !Array.isArray(o.study_questions) ||
-          !o.study_questions.every((q) => typeof q === "string") ||
-          ![...o.similarities, ...o.differences].every(
-            (i) =>
-              typeof i.title === "string" &&
-              Array.isArray(i.left_refs) &&
-              Array.isArray(i.right_refs),
-          ))
-      )
-        delete c.outline;
-    });
-    notebook = saved;
+// A saved passage needs these strings so the notebook can display and export it.
+function isValidSavedPassage(passage) {
+  if (!passage || typeof passage !== "object") {
+    return false;
   }
-} catch (_) {
-  $("storageMessage").textContent =
-    "Saved data could not be read. Export this session before closing it.";
+  const requiredFields = ["id", "reference", "text", "source", "query", "note"];
+  return requiredFields.every((field) => typeof passage[field] === "string");
 }
+
+function isValidSavedFolder(folder) {
+  if (!folder || typeof folder !== "object") {
+    return false;
+  }
+  return (
+    typeof folder.id === "string" &&
+    typeof folder.name === "string" &&
+    Array.isArray(folder.entries) &&
+    folder.entries.every(isValidSavedPassage)
+  );
+}
+
+// Old folders can have no outline. This check only runs when an outline exists.
+function isValidSavedOutline(outline) {
+  if (!outline || typeof outline.overview !== "string") {
+    return false;
+  }
+  if (
+    !Array.isArray(outline.similarities) ||
+    !Array.isArray(outline.differences) ||
+    !Array.isArray(outline.study_questions)
+  ) {
+    return false;
+  }
+  if (
+    !outline.study_questions.every((question) => typeof question === "string")
+  ) {
+    return false;
+  }
+  const findings = [...outline.similarities, ...outline.differences];
+  return findings.every(
+    (finding) =>
+      finding &&
+      typeof finding.title === "string" &&
+      Array.isArray(finding.left_refs) &&
+      Array.isArray(finding.right_refs),
+  );
+}
+
+// Read once at startup. If storage is unavailable, the default folder still works
+// for this visit. We leave unreadable stored data alone instead of deleting it.
+function loadNotebook() {
+  try {
+    const savedNotebook = JSON.parse(
+      localStorage.getItem(STORAGE_KEY) || "null",
+    );
+    if (!savedNotebook) {
+      return;
+    }
+    const validFolders =
+      Array.isArray(savedNotebook.collections) &&
+      savedNotebook.collections.length > 0 &&
+      savedNotebook.collections.every(isValidSavedFolder);
+    if (savedNotebook.version !== 1 || !validFolders) {
+      throw new Error("Invalid stored notebook");
+    }
+
+    // Earlier versions did not have Recently deleted. Give them an empty list.
+    savedNotebook.trash = Array.isArray(savedNotebook.trash)
+      ? savedNotebook.trash.filter(isValidSavedFolder)
+      : [];
+    const allFolders = [...savedNotebook.collections, ...savedNotebook.trash];
+    for (const folder of allFolders) {
+      if (folder.outline && !isValidSavedOutline(folder.outline)) {
+        delete folder.outline;
+      }
+    }
+    notebook = savedNotebook;
+  } catch (error) {
+    getElement("storageMessage").textContent =
+      "Saved data could not be read. Export this session before closing it.";
+  }
+}
+loadNotebook();
 
 // Save a snapshot of folders, notes, and Recently deleted, then refresh counts.
 function persistNotebook() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(notebook));
-    $("storageMessage").textContent = "Saved in this browser.";
+    getElement("storageMessage").textContent = "Saved in this browser.";
     updateNotebookCounts();
     return true;
   } catch (_) {
-    $("storageMessage").textContent =
+    getElement("storageMessage").textContent =
       "Browser storage is unavailable or full. Your changes are kept for this session; export a backup.";
     return false;
   }
 }
+// -----------------------------------------------------------------------------
+// 3. SEARCH REQUESTS AND STATUS
+// -----------------------------------------------------------------------------
+
 function status(message) {
-  $("apiStatus").textContent = message;
-  $("footerMessage").textContent = message;
+  getElement("apiStatus").textContent = message;
+  getElement("footerMessage").textContent = message;
 }
 function clearInspector() {
   selectedPassage = null;
-  $("detailType").textContent = "NO SELECTION";
-  $("detailLabel").textContent = "Select a passage";
-  $("detailSummary").textContent =
+  getElement("detailType").textContent = "NO SELECTION";
+  getElement("detailLabel").textContent = "Select a passage";
+  getElement("detailSummary").textContent =
     "Select a graph node or a supporting passage.";
-  $("verseText").textContent = "";
-  $("verseText").classList.add("hidden");
-  $("detailMeta").replaceChildren();
-  $("connectionList").replaceChildren();
-  $("connectionCount").textContent = "—";
-  $("detailMore").classList.add("hidden");
-  $("detailMore").open = false;
-  $("inspectorConnectionsTitle").textContent = "CONNECTIONS";
-  $("saveControls").classList.add("hidden");
-  $("saveMessage").textContent = "";
+  getElement("verseText").textContent = "";
+  getElement("verseText").classList.add("hidden");
+  getElement("detailMeta").replaceChildren();
+  getElement("connectionList").replaceChildren();
+  getElement("connectionCount").textContent = "—";
+  getElement("detailMore").classList.add("hidden");
+  getElement("detailMore").open = false;
+  getElement("inspectorConnectionsTitle").textContent = "CONNECTIONS";
+  getElement("saveControls").classList.add("hidden");
+  getElement("saveMessage").textContent = "";
 }
 // Return a cached graph copy when possible; validate new JSON before rendering it.
 async function fetchGraph(query, signal) {
@@ -171,13 +213,13 @@ async function fetchGraph(query, signal) {
 // Each search has a number. Background responses check it before changing the UI,
 // so a slow older request cannot overwrite a newer search.
 async function runSearch(
-  left = $("searchInput").value,
-  right = $("compareInput").value,
+  left = getElement("searchInput").value,
+  right = getElement("compareInput").value,
 ) {
   left = left.trim();
   right = right.trim();
   if (!left) {
-    $("searchInput").focus();
+    getElement("searchInput").focus();
     return;
   }
   if (left.length > 300 || right.length > 300) {
@@ -188,7 +230,7 @@ async function runSearch(
   insightsController?.abort();
   backgroundController?.abort();
   currentReport = null;
-  $("comparisonInsights").classList.add("hidden");
+  getElement("comparisonInsights").classList.add("hidden");
   const controller = new AbortController();
   activeController = controller;
   const started = performance.now();
@@ -202,16 +244,16 @@ async function runSearch(
   }, 150000);
   const slowNotice = setTimeout(() => {
     if (number === requestNumber)
-      $("loadingMessage").textContent =
+      getElement("loadingMessage").textContent =
         "Still working. The backend may be waking up; you can cancel and retry.";
   }, 12000);
-  $("errorBanner").classList.add("hidden");
+  getElement("errorBanner").classList.add("hidden");
   clearInspector();
-  $("loadingMessage").textContent = right
+  getElement("loadingMessage").textContent = right
     ? "RETRIEVING TWO SEARCHES"
     : "RETRIEVING + ORGANIZING SCRIPTURE";
-  $("loadingState").classList.remove("hidden");
-  $("cy").setAttribute("aria-busy", "true");
+  getElement("loadingState").classList.remove("hidden");
+  getElement("cy").setAttribute("aria-busy", "true");
   status("SEARCHING");
   try {
     // Retrieve both sides together; each backend retrieval batches passage requests.
@@ -232,13 +274,13 @@ async function runSearch(
     currentData = result;
     renderFilters(result);
     renderComparison(result);
-    $("sourceList").innerHTML = (result.sources || [])
+    getElement("sourceList").innerHTML = (result.sources || [])
       .map((s) => `<div class="source-item">${escapeHtml(s)}</div>`)
       .join("");
-    $("nodeCount").textContent = result.nodes.length;
-    $("edgeCount").textContent = result.edges.length;
-    $("queryType").textContent = result.queryType;
-    $("emptyState").classList.add("hidden");
+    getElement("nodeCount").textContent = result.nodes.length;
+    getElement("edgeCount").textContent = result.edges.length;
+    getElement("queryType").textContent = result.queryType;
+    getElement("emptyState").classList.add("hidden");
     showNodeDetails(cy.getElementById(result.center));
     status(`LOADED · ${((performance.now() - started) / 1000).toFixed(1)}s`);
     if (right) loadComparison(result, number);
@@ -251,15 +293,15 @@ async function runSearch(
       cy = null;
     }
     currentData = null;
-    $("filterList").replaceChildren();
-    $("comparisonPanel").classList.add("hidden");
-    $("comparisonInsights").classList.add("hidden");
-    $("sourceList").textContent = "No graph loaded.";
-    $("nodeCount").textContent = "0";
-    $("edgeCount").textContent = "0";
-    $("queryType").textContent = "—";
+    getElement("filterList").replaceChildren();
+    getElement("comparisonPanel").classList.add("hidden");
+    getElement("comparisonInsights").classList.add("hidden");
+    getElement("sourceList").textContent = "No graph loaded.";
+    getElement("nodeCount").textContent = "0";
+    getElement("edgeCount").textContent = "0";
+    getElement("queryType").textContent = "—";
     clearInspector();
-    $("emptyState").classList.remove("hidden");
+    getElement("emptyState").classList.remove("hidden");
     if (error.name === "AbortError" && !timedOut) status("SEARCH CANCELLED");
     else {
       showError(
@@ -273,22 +315,26 @@ async function runSearch(
     clearTimeout(deadline);
     clearTimeout(slowNotice);
     if (number === requestNumber) {
-      $("loadingState").classList.add("hidden");
-      $("cy").setAttribute("aria-busy", "false");
+      getElement("loadingState").classList.add("hidden");
+      getElement("cy").setAttribute("aria-busy", "false");
       activeController = null;
     }
   }
 }
 function showError(message) {
-  $("errorMessage").textContent = message;
-  $("errorBanner").classList.remove("hidden");
+  getElement("errorMessage").textContent = message;
+  getElement("errorBanner").classList.remove("hidden");
 }
+// -----------------------------------------------------------------------------
+// 4. GRAPH DISPLAY AND PASSAGE SELECTION
+// -----------------------------------------------------------------------------
+
 // Cytoscape draws the network. Node/edge data determine its colors and styles.
 // A yellow thematic edge has its own click handler, separate from selecting a verse.
 function renderGraph(data) {
   cy?.destroy();
   cy = cytoscape({
-    container: $("cy"),
+    container: getElement("cy"),
     elements: [...data.nodes, ...data.edges],
     minZoom: 0.08,
     maxZoom: 3,
@@ -422,9 +468,9 @@ function showNodeDetails(node) {
   if (!node?.length) return;
   clearInspector();
   const d = node.data();
-  $("detailType").textContent =
+  getElement("detailType").textContent =
     `${d.type.toUpperCase()}${d.membership ? " / " + d.membership.toUpperCase() : ""}`;
-  $("detailLabel").textContent = d.label;
+  getElement("detailLabel").textContent = d.label;
   const evidence = d.evidence || [d];
   const summary = evidence
     .map(
@@ -432,13 +478,13 @@ function showNodeDetails(node) {
         `${e.query ? e.query + ": " : ""}${e.summary || "Retrieved passage."}`,
     )
     .join("\n\n");
-  $("detailSummary").textContent =
+  getElement("detailSummary").textContent =
     summary.length > 240 ? summary.slice(0, 240) + "…" : summary;
-  $("detailFullSummary").textContent = summary;
-  $("detailMore").classList.toggle("hidden", summary.length <= 240);
+  getElement("detailFullSummary").textContent = summary;
+  getElement("detailMore").classList.toggle("hidden", summary.length <= 240);
   if (d.type === "verse" && d.text) {
-    $("verseText").textContent = d.text;
-    $("verseText").classList.remove("hidden");
+    getElement("verseText").textContent = d.text;
+    getElement("verseText").classList.remove("hidden");
     selectedPassage = {
       id: d.reference || d.label,
       reference: d.reference || d.label,
@@ -447,7 +493,7 @@ function showNodeDetails(node) {
       query: currentData?.query || "",
       note: "",
     };
-    $("saveControls").classList.remove("hidden");
+    getElement("saveControls").classList.remove("hidden");
     updatePassageSavePreview();
   }
   const meta = [
@@ -459,7 +505,7 @@ function showNodeDetails(node) {
       "Summaries and connection explanations may be AI-generated.",
     ],
   ];
-  $("detailMeta").innerHTML = meta
+  getElement("detailMeta").innerHTML = meta
     .filter(([, v]) => v)
     .map(
       ([k, v]) =>
@@ -467,7 +513,7 @@ function showNodeDetails(node) {
     )
     .join("");
   const connections = node.connectedEdges().filter((e) => e.visible());
-  $("connectionCount").textContent = connections.length;
+  getElement("connectionCount").textContent = connections.length;
   connections.forEach((edge) => {
     const other =
       edge.source().id() === node.id() ? edge.target() : edge.source();
@@ -480,33 +526,33 @@ function showNodeDetails(node) {
         ? showThematicConnection(edge)
         : selectNode(other),
     );
-    $("connectionList").append(button);
+    getElement("connectionList").append(button);
   });
   if (!connections.length)
-    $("connectionList").textContent = "No visible connections.";
+    getElement("connectionList").textContent = "No visible connections.";
 }
 // Count actual thematic edges, rather than confusing them with identical verses.
 function updateThematicStats() {
   if (!cy || !currentData?.comparison) return;
   const links = cy.edges('[type="theme-bridge"]');
   const visible = links.filter((e) => e.visible()).length;
-  $("thematicStats").textContent =
+  getElement("thematicStats").textContent =
     `${links.length} thematic ${links.length === 1 ? "connection" : "connections"}${visible !== links.length ? ` · ${visible} visible` : ""}`;
-  $("thematicList").replaceChildren();
+  getElement("thematicList").replaceChildren();
   links.forEach((link) => {
     const button = document.createElement("button");
     button.className = "thematic-choice";
     button.textContent = link.data("label");
     button.addEventListener("click", () => showThematicConnection(link));
-    $("thematicList").append(button);
+    getElement("thematicList").append(button);
   });
 }
 // Both sidebar titles and yellow-line clicks use this same explanation view.
 // Explain the relation first; full verse readings stay collapsed until requested.
 function showThematicConnection(link) {
   if (!link?.length) return;
-  $("themeLinks").checked = true;
-  $("filterList")
+  getElement("themeLinks").checked = true;
+  getElement("filterList")
     .querySelectorAll("input")
     .forEach((i) => {
       if (i.value === "verse") i.checked = true;
@@ -520,15 +566,15 @@ function showThematicConnection(link) {
   a.union(b).addClass("focused");
   cy.fit(a.union(b).union(link), 75);
   clearInspector();
-  $("detailType").textContent = "WHY THESE PASSAGES CONNECT";
-  $("detailLabel").textContent = d.label;
-  $("detailSummary").textContent = d.explanation;
-  $("detailMeta").textContent =
+  getElement("detailType").textContent = "WHY THESE PASSAGES CONNECT";
+  getElement("detailLabel").textContent = d.label;
+  getElement("detailSummary").textContent = d.explanation;
+  getElement("detailMeta").textContent =
     d.interpretationMethod === "text"
       ? "Word-match preview; AI interpretation is still separate."
       : "AI interpretation of the retrieved passages.";
-  $("inspectorConnectionsTitle").textContent = "SUPPORTING PASSAGES";
-  $("connectionCount").textContent = "2";
+  getElement("inspectorConnectionsTitle").textContent = "SUPPORTING PASSAGES";
+  getElement("connectionCount").textContent = "2";
   [
     [a, "A", d.leftFocus],
     [b, "B", d.rightFocus],
@@ -554,7 +600,7 @@ function showThematicConnection(link) {
     open.textContent = `Open ${n.data("label")}`;
     open.addEventListener("click", () => selectNode(n));
     section.append(open);
-    $("connectionList").append(section);
+    getElement("connectionList").append(section);
   });
 }
 function renderFilters(data) {
@@ -562,29 +608,29 @@ function renderFilters(data) {
   data.nodes.forEach((n) => {
     counts[n.data.type] = (counts[n.data.type] || 0) + 1;
   });
-  $("filterList").innerHTML = Object.entries(counts)
+  getElement("filterList").innerHTML = Object.entries(counts)
     .map(
       ([type, count]) =>
         `<label class="filter-row"><input type="checkbox" value="${escapeHtml(type)}" checked /><span>${escapeHtml(type)}</span><span>${count}</span></label>`,
     )
     .join("");
-  $("filterList")
+  getElement("filterList")
     .querySelectorAll("input")
     .forEach((input) => input.addEventListener("change", applyFilters));
 }
 function renderComparison(data) {
-  $("comparisonPanel").classList.toggle("hidden", !data.comparison);
-  $("themeLinksControl").classList.toggle("hidden", !data.comparison);
+  getElement("comparisonPanel").classList.toggle("hidden", !data.comparison);
+  getElement("themeLinksControl").classList.toggle("hidden", !data.comparison);
   if (!data.comparison) return;
   const c = data.comparison;
-  $("comparisonStats").innerHTML =
+  getElement("comparisonStats").innerHTML =
     `<div class="comparison-key left-key">A: ${escapeHtml(c.left)} · ${c.leftOnly + c.shared} passages</div><div class="comparison-key right-key">B: ${escapeHtml(c.right)} · ${c.rightOnly + c.shared} passages</div>`;
 }
 function applyFilters() {
   if (!cy) return;
-  const types = [...$("filterList").querySelectorAll("input:checked")].map(
-    (i) => i.value,
-  );
+  const types = [
+    ...getElement("filterList").querySelectorAll("input:checked"),
+  ].map((i) => i.value);
   cy.nodes().forEach((n) =>
     n.style("display", types.includes(n.data("type")) ? "element" : "none"),
   );
@@ -593,7 +639,7 @@ function applyFilters() {
       "display",
       e.source().visible() &&
         e.target().visible() &&
-        (e.data("type") !== "theme-bridge" || $("themeLinks").checked)
+        (e.data("type") !== "theme-bridge" || getElement("themeLinks").checked)
         ? "element"
         : "none",
     ),
@@ -602,11 +648,16 @@ function applyFilters() {
   clearInspector();
   fitGraph();
   updateThematicStats();
-  $("footerMessage").textContent =
+  getElement("footerMessage").textContent =
     `${cy.nodes(":visible").length} visible nodes`;
 }
+// -----------------------------------------------------------------------------
+// 5. NOTEBOOK DISPLAY: FOLDERS, OUTLINES, AND NOTES
+// -----------------------------------------------------------------------------
+
 // "Collection" is the storage name for a notebook folder. This fallback ensures
 // the UI always has a valid folder even after the previously selected one is deleted.
+// The page says "folder"; older saved data calls the same object a "collection".
 function chosenCollection() {
   return (
     notebook.collections.find((c) => c.id === notebook.activeCollectionId) ||
@@ -614,203 +665,277 @@ function chosenCollection() {
   );
 }
 function renderCollectionOptions() {
-  const previous = $("saveCollection").value;
-  $("saveCollection").innerHTML = notebook.collections
+  const previous = getElement("saveCollection").value;
+  getElement("saveCollection").innerHTML = notebook.collections
     .map(
       (c) =>
         `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`,
     )
     .join("");
   if (notebook.collections.some((c) => c.id === previous))
-    $("saveCollection").value = previous;
+    getElement("saveCollection").value = previous;
   updateNotebookCounts();
   updatePassageSavePreview();
 }
-// Rebuild folder badges and restore buttons without replacing the note editor,
-// allowing notes to autosave without losing the cursor.
+// Refresh counts without rebuilding passage cards. Rebuilding a textarea on
+// every keystroke would move the cursor while the user is writing a note.
 function updateNotebookCounts() {
-  const total = notebook.collections.reduce(
-    (sum, c) => sum + c.entries.length,
-    0,
-  );
-  $("notebookHomeCount").textContent =
-    `${notebook.collections.length} ${notebook.collections.length === 1 ? "folder" : "folders"} · ${total} saved ${total === 1 ? "passage" : "passages"}`;
-  $("folderCount").textContent = notebook.collections.length;
-  $("folderList").replaceChildren();
-  notebook.collections.forEach((c) => {
+  let passageCount = 0;
+  for (const folder of notebook.collections) {
+    passageCount += folder.entries.length;
+  }
+  const folderCount = notebook.collections.length;
+  const folderWord = folderCount === 1 ? "folder" : "folders";
+  const passageWord = passageCount === 1 ? "passage" : "passages";
+  getElement("notebookHomeCount").textContent =
+    `${folderCount} ${folderWord} · ${passageCount} saved ${passageWord}`;
+  getElement("folderCount").textContent = folderCount;
+  renderFolderList();
+  renderDeletedFolders();
+  renderFolderSummary();
+}
+
+// Each folder button opens that folder. aria-current marks the selected button
+// for screen readers as well as the active-folder styling.
+function renderFolderList() {
+  const folderList = getElement("folderList");
+  folderList.replaceChildren();
+  const activeFolder = chosenCollection();
+  for (const folder of notebook.collections) {
     const button = document.createElement("button");
     button.className = "notebook-folder";
-    button.setAttribute("aria-current", String(c.id === chosenCollection().id));
+    button.setAttribute("aria-current", String(folder.id === activeFolder.id));
     const title = document.createElement("span");
-    title.textContent = `▱ ${c.name}`;
+    title.textContent = `▱ ${folder.name}`;
     const count = document.createElement("small");
-    count.textContent = `${c.entries.length} ${c.entries.length === 1 ? "passage" : "passages"}${c.outline ? " · study outline" : ""}`;
+    const passageWord = folder.entries.length === 1 ? "passage" : "passages";
+    count.textContent = `${folder.entries.length} ${passageWord}`;
+    if (folder.outline) {
+      count.textContent += " · study outline";
+    }
     button.append(title, count);
-    button.addEventListener("click", () => openNotebook(c.id));
-    $("folderList").append(button);
-  });
-  $("deletedFoldersTitle").textContent =
-    `Recently deleted (${notebook.trash.length})`;
-  $("deletedFolderList").replaceChildren();
-  notebook.trash.forEach((folder) => {
-    const row = document.createElement("div"),
-      name = document.createElement("p"),
-      button = document.createElement("button");
-    row.className = "deleted-folder";
-    name.textContent = `${folder.name} · ${folder.entries.length} passages`;
-    button.textContent = `Restore ${folder.name}`;
-    button.addEventListener("click", () => restoreFolder(folder.id));
-    row.append(name, button);
-    $("deletedFolderList").append(row);
-  });
-  if (!notebook.trash.length)
-    $("deletedFolderList").textContent =
-      "Deleted folders can be restored here.";
-  const c = chosenCollection(),
-    notes = c.entries.filter((e) => e.note.trim()).length;
-  $("folderSummary").textContent =
-    `${c.entries.length} saved ${c.entries.length === 1 ? "passage" : "passages"} · ${notes} ${notes === 1 ? "note" : "notes"}${c.outline ? " · 1 study outline" : ""}`;
+    button.addEventListener("click", () => openNotebook(folder.id));
+    folderList.append(button);
+  }
 }
+
+function renderDeletedFolders() {
+  getElement("deletedFoldersTitle").textContent =
+    `Recently deleted (${notebook.trash.length})`;
+  const deletedList = getElement("deletedFolderList");
+  deletedList.replaceChildren();
+  if (notebook.trash.length === 0) {
+    deletedList.textContent = "Deleted folders can be restored here.";
+    return;
+  }
+  for (const folder of notebook.trash) {
+    const row = document.createElement("div");
+    row.className = "deleted-folder";
+    const name = document.createElement("p");
+    name.textContent = `${folder.name} · ${folder.entries.length} passages`;
+    const restoreButton = document.createElement("button");
+    restoreButton.textContent = `Restore ${folder.name}`;
+    restoreButton.addEventListener("click", () => restoreFolder(folder.id));
+    row.append(name, restoreButton);
+    deletedList.append(row);
+  }
+}
+
+function renderFolderSummary() {
+  const folder = chosenCollection();
+  const passageCount = folder.entries.length;
+  const noteCount = folder.entries.filter((passage) =>
+    passage.note.trim(),
+  ).length;
+  const passageWord = passageCount === 1 ? "passage" : "passages";
+  const noteWord = noteCount === 1 ? "note" : "notes";
+  let summary = `${passageCount} saved ${passageWord} · ${noteCount} ${noteWord}`;
+  if (folder.outline) {
+    summary += " · 1 study outline";
+  }
+  getElement("folderSummary").textContent = summary;
+}
+
 function openNotebook(id) {
   if (id && notebook.collections.some((c) => c.id === id)) {
     notebook.activeCollectionId = id;
     persistNotebook();
   }
-  $("saveCollection").value = chosenCollection().id;
-  $("notebookSearch").value = "";
-  $("renameFolderForm").classList.add("hidden");
-  $("deleteFolderConfirm").classList.add("hidden");
+  getElement("saveCollection").value = chosenCollection().id;
+  getElement("notebookSearch").value = "";
+  getElement("renameFolderForm").classList.add("hidden");
+  getElement("deleteFolderConfirm").classList.add("hidden");
   renderNotebook();
-  if (!$("notebookDialog").open) $("notebookDialog").showModal();
+  if (!getElement("notebookDialog").open)
+    getElement("notebookDialog").showModal();
 }
-// Display only the selected folder. Search filters the visible entries; it does
-// not remove data from the folder or change what Export folder downloads.
+// This function is the notebook's main display step. It chooses which data to
+// show; the smaller functions below build the outline, empty state, and cards.
 function renderNotebook() {
-  const collection = chosenCollection();
+  const folder = chosenCollection();
+  const entryList = getElement("notebookEntries");
+  const search = getElement("notebookSearch").value.trim().toLowerCase();
+
   updateNotebookCounts();
-  $("folderTitle").textContent = collection.name;
-  $("folderBreadcrumb").textContent = collection.name;
-  $("notebookEntries").replaceChildren();
-  $("exportButton").disabled =
-    !collection.entries.length && !collection.outline;
-  const search = $("notebookSearch").value.trim().toLowerCase();
-  if (collection.outline && !search) {
-    const outline = document.createElement("details");
-    outline.className = "notebook-outline";
-    const heading = document.createElement("summary");
-    heading.textContent = "Saved comparison outline";
-    outline.append(heading);
-    const p = document.createElement("p");
-    p.textContent = collection.outline.overview;
-    outline.append(p);
-    const provenance = document.createElement("p");
-    provenance.className = "help-text";
-    provenance.textContent =
-      collection.outline.method === "ai"
-        ? "AI interpretation with supporting passages."
-        : "Text-based study preview.";
-    outline.append(provenance);
-    [
-      ...collection.outline.similarities,
-      ...collection.outline.differences,
-    ].forEach((item) => {
-      const finding = document.createElement("details"),
-        title = document.createElement("summary"),
-        body = document.createElement("p");
-      title.textContent = item.title;
-      body.textContent =
-        item.explanation || `A: ${item.left_focus} B: ${item.right_focus}`;
-      const evidence = document.createElement("p");
-      evidence.className = "help-text";
-      evidence.textContent = `A: ${item.left_refs.join(", ")} · B: ${item.right_refs.join(", ")}`;
-      finding.append(title, body, evidence);
-      outline.append(finding);
-    });
-    const questions = document.createElement("h4");
-    questions.textContent = "Study questions";
-    outline.append(questions);
-    const list = document.createElement("ol");
-    collection.outline.study_questions.forEach((q) => {
-      const li = document.createElement("li");
-      li.textContent = q;
-      list.append(li);
-    });
-    outline.append(list);
-    $("notebookEntries").append(outline);
+  getElement("folderTitle").textContent = folder.name;
+  getElement("folderBreadcrumb").textContent = folder.name;
+  entryList.replaceChildren();
+  getElement("exportButton").disabled =
+    !folder.entries.length && !folder.outline;
+
+  // Search only changes what is visible. It never deletes saved passages or
+  // changes the complete folder that the Export button downloads.
+  if (folder.outline && !search) {
+    entryList.append(createSavedOutline(folder.outline));
   }
-  const entries = collection.entries.filter((e) =>
-    `${e.reference} ${e.text} ${e.note}`.toLowerCase().includes(search),
-  );
-  if (!entries.length) {
-    const empty = document.createElement("div");
-    empty.className = "notebook-empty";
-    const title = document.createElement("h4");
-    title.textContent = search
-      ? "No matching passages"
-      : `No saved passages in “${collection.name}” yet`;
-    const text = document.createElement("p");
-    text.textContent = search
-      ? "Try a verse reference or a word from your notes."
-      : `To add a verse, select it in the graph and choose Review & save passage. Pick “${collection.name}” in the save window, then confirm. Your verse and notes will appear here. Use Review & save study to keep a whole comparison.`;
-    empty.append(title, text);
-    $("notebookEntries").append(empty);
+  const matchingPassages = folder.entries.filter((passage) => {
+    const searchableText = `${passage.reference} ${passage.text} ${passage.note}`;
+    return searchableText.toLowerCase().includes(search);
+  });
+  if (matchingPassages.length === 0) {
+    entryList.append(createNotebookEmptyState(folder, search));
     return;
   }
-  entries.forEach((entry) => {
-    const article = document.createElement("details");
-    article.className = "saved-entry";
-    const heading = document.createElement("summary"),
-      reference = document.createElement("span"),
-      badge = document.createElement("small");
-    reference.textContent = entry.reference;
-    badge.textContent = entry.note.trim() ? "Has a note" : "Add a note";
-    heading.append(reference, badge);
-    const quote = document.createElement("blockquote");
-    quote.textContent = entry.text;
-    const meta = document.createElement("details"),
-      metaTitle = document.createElement("summary"),
-      metaBody = document.createElement("p");
-    meta.className = "saved-source";
-    metaTitle.textContent = "Source & original search";
-    metaBody.textContent = `${entry.source} · ${entry.query}`;
-    meta.append(metaTitle, metaBody);
-    const label = document.createElement("label");
-    label.textContent = "Your notes";
-    const textarea = document.createElement("textarea");
-    textarea.value = entry.note;
-    textarea.maxLength = 10000;
-    textarea.rows = 3;
-    textarea.placeholder = "What stands out to you in this passage?";
-    label.append(textarea);
-    textarea.addEventListener("input", () => {
-      entry.note = textarea.value;
-      badge.textContent = entry.note.trim() ? "Has a note" : "Add a note";
-      persistNotebook();
-    });
-    const remove = document.createElement("button");
-    remove.className = "remove-passage";
-    remove.textContent = "Remove from folder";
-    remove.addEventListener("click", () => {
-      collection.entries = collection.entries.filter((e) => e !== entry);
-      persistNotebook();
-      renderNotebook();
-    });
-    article.append(heading, quote, meta, label, remove);
-    $("notebookEntries").append(article);
-  });
+  for (const passage of matchingPassages) {
+    entryList.append(createSavedPassageCard(folder, passage));
+  }
 }
-$("searchForm").addEventListener("submit", (event) => {
+
+// textContent displays user notes and AI text as plain text, not executable HTML.
+function createNotebookEmptyState(folder, search) {
+  const emptyState = document.createElement("div");
+  emptyState.className = "notebook-empty";
+  const title = document.createElement("h4");
+  const instructions = document.createElement("p");
+  if (search) {
+    title.textContent = "No matching passages";
+    instructions.textContent =
+      "Try a verse reference or a word from your notes.";
+  } else {
+    title.textContent = `No saved passages in “${folder.name}” yet`;
+    instructions.textContent = `To add a verse, select it in the graph and choose Review & save passage. Pick “${folder.name}” in the save window, then confirm. Your verse and notes will appear here. Use Review & save study to keep a whole comparison.`;
+  }
+  emptyState.append(title, instructions);
+  return emptyState;
+}
+
+// A saved comparison has its own collapsible section above the passage cards.
+function createSavedOutline(savedOutline) {
+  const outline = document.createElement("details");
+  outline.className = "notebook-outline";
+  const heading = document.createElement("summary");
+  heading.textContent = "Saved comparison outline";
+  const overview = document.createElement("p");
+  overview.textContent = savedOutline.overview;
+  const method = document.createElement("p");
+  method.className = "help-text";
+  method.textContent =
+    savedOutline.method === "ai"
+      ? "AI interpretation with supporting passages."
+      : "Text-based study preview.";
+  outline.append(heading, overview, method);
+
+  const findings = [...savedOutline.similarities, ...savedOutline.differences];
+  for (const finding of findings) {
+    outline.append(createSavedFinding(finding));
+  }
+  const questionHeading = document.createElement("h4");
+  questionHeading.textContent = "Study questions";
+  const questionList = document.createElement("ol");
+  for (const question of savedOutline.study_questions) {
+    const listItem = document.createElement("li");
+    listItem.textContent = question;
+    questionList.append(listItem);
+  }
+  outline.append(questionHeading, questionList);
+  return outline;
+}
+
+function createSavedFinding(finding) {
+  const details = document.createElement("details");
+  const title = document.createElement("summary");
+  title.textContent = finding.title;
+  const explanation = document.createElement("p");
+  explanation.textContent =
+    finding.explanation || `A: ${finding.left_focus} B: ${finding.right_focus}`;
+  const references = document.createElement("p");
+  references.className = "help-text";
+  references.textContent = `A: ${finding.left_refs.join(", ")} · B: ${finding.right_refs.join(", ")}`;
+  details.append(title, explanation, references);
+  return details;
+}
+
+function createSavedPassageCard(folder, passage) {
+  const card = document.createElement("details");
+  card.className = "saved-entry";
+
+  // The closed card shows its verse reference and whether it has a note.
+  const heading = document.createElement("summary");
+  const reference = document.createElement("span");
+  reference.textContent = passage.reference;
+  const noteBadge = document.createElement("small");
+  noteBadge.textContent = passage.note.trim() ? "Has a note" : "Add a note";
+  heading.append(reference, noteBadge);
+  const quotation = document.createElement("blockquote");
+  quotation.textContent = passage.text;
+
+  // Keep extra source information collapsed so the notebook is less crowded.
+  const sourceDetails = document.createElement("details");
+  sourceDetails.className = "saved-source";
+  const sourceHeading = document.createElement("summary");
+  sourceHeading.textContent = "Source & original search";
+  const sourceText = document.createElement("p");
+  sourceText.textContent = `${passage.source} · ${passage.query}`;
+  sourceDetails.append(sourceHeading, sourceText);
+
+  const noteLabel = document.createElement("label");
+  noteLabel.textContent = "Your notes";
+  const noteInput = document.createElement("textarea");
+  noteInput.value = passage.note;
+  noteInput.maxLength = 10000;
+  noteInput.rows = 3;
+  noteInput.placeholder = "What stands out to you in this passage?";
+  noteLabel.append(noteInput);
+
+  // Update the existing passage object and save after each edit. Do not rebuild
+  // the whole card here: the user should keep their place in the textarea.
+  noteInput.addEventListener("input", () => {
+    passage.note = noteInput.value;
+    noteBadge.textContent = passage.note.trim() ? "Has a note" : "Add a note";
+    persistNotebook();
+  });
+  const removeButton = document.createElement("button");
+  removeButton.className = "remove-passage";
+  removeButton.textContent = "Remove from folder";
+  removeButton.addEventListener("click", () => {
+    folder.entries = folder.entries.filter(
+      (savedPassage) => savedPassage !== passage,
+    );
+    persistNotebook();
+    renderNotebook();
+  });
+  card.append(heading, quotation, sourceDetails, noteLabel, removeButton);
+  return card;
+}
+
+// -----------------------------------------------------------------------------
+// 6. SEARCH BUTTONS AND NOTEBOOK FOLDER ACTIONS
+// -----------------------------------------------------------------------------
+
+getElement("searchForm").addEventListener("submit", (event) => {
   event.preventDefault();
   runSearch();
 });
-$("cancelButton").addEventListener("click", () => activeController?.abort());
-$("retryButton").addEventListener("click", () => {
+getElement("cancelButton").addEventListener("click", () =>
+  activeController?.abort(),
+);
+getElement("retryButton").addEventListener("click", () => {
   if (lastSearch) runSearch(...lastSearch);
 });
-$("fitButton").addEventListener("click", fitGraph);
-$("resetButton").addEventListener("click", () => {
+getElement("fitButton").addEventListener("click", fitGraph);
+getElement("resetButton").addEventListener("click", () => {
   if (!cy) return;
-  $("filterList")
+  getElement("filterList")
     .querySelectorAll("input")
     .forEach((i) => (i.checked = true));
   applyFilters();
@@ -818,25 +943,30 @@ $("resetButton").addEventListener("click", () => {
 });
 document.querySelectorAll("[data-query]").forEach((button) =>
   button.addEventListener("click", () => {
-    $("searchInput").value = button.dataset.query;
-    $("compareInput").value = button.dataset.compare || "";
+    getElement("searchInput").value = button.dataset.query;
+    getElement("compareInput").value = button.dataset.compare || "";
     runSearch();
   }),
 );
-$("notebookButton").addEventListener("click", () => openNotebook());
-$("notebookHomeButton").addEventListener("click", () => openNotebook());
-$("notebookSearch").addEventListener("input", renderNotebook);
-$("closeNotebook").addEventListener("click", () => $("notebookDialog").close());
-$("collectionForm").addEventListener("submit", (event) => {
+getElement("notebookButton").addEventListener("click", () => openNotebook());
+getElement("notebookHomeButton").addEventListener("click", () =>
+  openNotebook(),
+);
+getElement("notebookSearch").addEventListener("input", renderNotebook);
+getElement("closeNotebook").addEventListener("click", () =>
+  getElement("notebookDialog").close(),
+);
+// Create a folder or open the existing one if that name is already in use.
+function createNotebookFolder(event) {
   event.preventDefault();
-  const name = $("collectionName").value.trim();
+  const name = getElement("collectionName").value.trim();
   if (!name) return;
   const existing = notebook.collections.find(
     (c) => c.name.toLowerCase() === name.toLowerCase(),
   );
   if (existing) {
     openNotebook(existing.id);
-    $("storageMessage").textContent =
+    getElement("storageMessage").textContent =
       "Opened the existing folder with that name.";
     return;
   }
@@ -844,21 +974,23 @@ $("collectionForm").addEventListener("submit", (event) => {
   notebook.collections.push(collection);
   persistNotebook();
   renderCollectionOptions();
-  $("saveCollection").value = collection.id;
-  $("collectionName").value = "";
+  getElement("saveCollection").value = collection.id;
+  getElement("collectionName").value = "";
   openNotebook(collection.id);
+}
+getElement("collectionForm").addEventListener("submit", createNotebookFolder);
+getElement("renameFolderButton").addEventListener("click", () => {
+  getElement("renameFolderName").value = chosenCollection().name;
+  getElement("renameFolderForm").classList.remove("hidden");
+  getElement("renameFolderName").focus();
 });
-$("renameFolderButton").addEventListener("click", () => {
-  $("renameFolderName").value = chosenCollection().name;
-  $("renameFolderForm").classList.remove("hidden");
-  $("renameFolderName").focus();
-});
-$("cancelRenameButton").addEventListener("click", () =>
-  $("renameFolderForm").classList.add("hidden"),
+getElement("cancelRenameButton").addEventListener("click", () =>
+  getElement("renameFolderForm").classList.add("hidden"),
 );
-$("renameFolderForm").addEventListener("submit", (event) => {
+// Change only the name. The folder id and its saved passages stay the same.
+function renameNotebookFolder(event) {
   event.preventDefault();
-  const name = $("renameFolderName").value.trim(),
+  const name = getElement("renameFolderName").value.trim(),
     collection = chosenCollection();
   if (!name) return;
   if (
@@ -867,45 +999,62 @@ $("renameFolderForm").addEventListener("submit", (event) => {
         c.id !== collection.id && c.name.toLowerCase() === name.toLowerCase(),
     )
   ) {
-    $("storageMessage").textContent = "Another folder already has that name.";
+    getElement("storageMessage").textContent =
+      "Another folder already has that name.";
     return;
   }
   collection.name = name;
   persistNotebook();
   renderCollectionOptions();
   renderNotebook();
-  $("renameFolderForm").classList.add("hidden");
-});
+  getElement("renameFolderForm").classList.add("hidden");
+}
+getElement("renameFolderForm").addEventListener("submit", renameNotebookFolder);
+// -----------------------------------------------------------------------------
+// 7. NOTEBOOK SAVE REVIEW, DELETE, RESTORE, AND EXPORT
+// -----------------------------------------------------------------------------
+
 function updatePassageSavePreview() {
   if (!selectedPassage) return;
   const folder =
-    notebook.collections.find((c) => c.id === $("saveCollection").value) ||
-    chosenCollection();
-  $("savePassageTitle").textContent = `Saving: ${selectedPassage.reference}`;
-  $("saveDestination").textContent = `My notebook / ${folder.name}`;
+    notebook.collections.find(
+      (c) => c.id === getElement("saveCollection").value,
+    ) || chosenCollection();
+  getElement("savePassageTitle").textContent =
+    `Saving: ${selectedPassage.reference}`;
+  getElement("saveDestination").textContent = `My notebook / ${folder.name}`;
 }
 function updateSaveReview() {
-  const creating = $("saveReviewFolder").value === "__new__";
-  $("saveNewFolderFields").classList.toggle("hidden", !creating);
-  $("saveNewFolderName").required = creating;
+  const creating = getElement("saveReviewFolder").value === "__new__";
+  getElement("saveNewFolderFields").classList.toggle("hidden", !creating);
+  getElement("saveNewFolderName").required = creating;
   const folder = notebook.collections.find(
-    (c) => c.id === $("saveReviewFolder").value,
+    (c) => c.id === getElement("saveReviewFolder").value,
   );
   const name = creating
-    ? $("saveNewFolderName").value.trim() || "New folder"
+    ? getElement("saveNewFolderName").value.trim() || "New folder"
     : folder?.name;
-  $("saveReviewDestination").textContent = `Destination: My notebook / ${name}`;
-  $("confirmSaveReview").textContent = creating
+  getElement("saveReviewDestination").textContent =
+    `Destination: My notebook / ${name}`;
+  getElement("confirmSaveReview").textContent = creating
     ? "Create folder & save"
     : `Save to ${name}`;
-  $("saveReviewNotice").textContent =
-    pendingSave?.kind === "outline" && folder?.outline
-      ? "This updates this folder’s saved comparison outline. Existing passage notes are kept."
-      : pendingSave?.kind === "passage" &&
-          folder?.entries.some((e) => e.id === pendingSave.passage.id)
-        ? "This passage is already in this folder; its notes will be kept."
-        : "";
-  $("saveReviewError").textContent = "";
+  // Warn about an outline update or duplicate passage before the user confirms.
+  let notice = "";
+  if (pendingSave?.kind === "outline" && folder?.outline) {
+    notice =
+      "This updates this folder’s saved comparison outline. Existing passage notes are kept.";
+  } else if (pendingSave?.kind === "passage" && folder) {
+    const alreadySaved = folder.entries.some(
+      (passage) => passage.id === pendingSave.passage.id,
+    );
+    if (alreadySaved) {
+      notice =
+        "This passage is already in this folder; its notes will be kept.";
+    }
+  }
+  getElement("saveReviewNotice").textContent = notice;
+  getElement("saveReviewError").textContent = "";
 }
 // Snapshot the chosen passage/report when opening the review. Later AI updates
 // must not silently change what the user is about to save. Cancel makes no edits.
@@ -919,57 +1068,61 @@ function reviewSave(kind) {
     kind === "passage"
       ? { kind, passage: structuredClone(selectedPassage) }
       : { kind, study: buildStudyOutline(currentData, currentReport) };
-  $("saveReviewFolder").innerHTML =
+  getElement("saveReviewFolder").innerHTML =
     notebook.collections
       .map(
         (c) =>
           `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`,
       )
       .join("") + '<option value="__new__">+ Create a new folder</option>';
-  $("saveReviewFolder").value =
-    kind === "outline" ? "__new__" : $("saveCollection").value;
-  $("saveNewFolderName").value =
+  getElement("saveReviewFolder").value =
+    kind === "outline" ? "__new__" : getElement("saveCollection").value;
+  getElement("saveNewFolderName").value =
     kind === "outline" ? pendingSave.study.name : "";
-  $("saveReviewTitle").textContent =
+  getElement("saveReviewTitle").textContent =
     kind === "passage" ? "Save this passage" : "Save this study";
-  $("saveReviewItem").textContent =
+  getElement("saveReviewItem").textContent =
     kind === "passage" ? pendingSave.passage.reference : pendingSave.study.name;
-  $("saveReviewContents").textContent =
+  getElement("saveReviewContents").textContent =
     kind === "passage"
       ? "Includes this verse’s text and the search it came from. Add personal notes in your notebook."
       : `${pendingSave.study.entries.length} supporting passages, similarities and differences, and study questions. ${pendingSave.study.outline.method === "ai" ? "Includes AI interpretation." : "This is a text-based preview."}`;
-  $("saveReviewPreview").textContent =
+  getElement("saveReviewPreview").textContent =
     kind === "passage"
       ? pendingSave.passage.text
       : pendingSave.study.outline.overview;
   updateSaveReview();
-  $("saveReviewDialog").showModal();
+  getElement("saveReviewDialog").showModal();
 }
-$("saveCollection").addEventListener("change", () => {
+getElement("saveCollection").addEventListener("change", () => {
   updatePassageSavePreview();
-  $("saveMessage").textContent = "";
+  getElement("saveMessage").textContent = "";
 });
-$("saveVerseButton").addEventListener("click", () => reviewSave("passage"));
-$("saveReviewFolder").addEventListener("change", updateSaveReview);
-$("saveNewFolderName").addEventListener("input", updateSaveReview);
-$("cancelSaveReview").addEventListener("click", () =>
-  $("saveReviewDialog").close(),
+getElement("saveVerseButton").addEventListener("click", () =>
+  reviewSave("passage"),
 );
-$("saveReviewForm").addEventListener("submit", (event) => {
+getElement("saveReviewFolder").addEventListener("change", updateSaveReview);
+getElement("saveNewFolderName").addEventListener("input", updateSaveReview);
+getElement("cancelSaveReview").addEventListener("click", () =>
+  getElement("saveReviewDialog").close(),
+);
+// Confirming is the first point where a review actually changes the notebook.
+// Canceling the review leaves folders and passages untouched.
+function confirmNotebookSave(event) {
   event.preventDefault();
   if (!pendingSave) return;
   let folder = notebook.collections.find(
-    (c) => c.id === $("saveReviewFolder").value,
+    (c) => c.id === getElement("saveReviewFolder").value,
   );
-  if ($("saveReviewFolder").value === "__new__") {
-    const name = $("saveNewFolderName").value.trim();
+  if (getElement("saveReviewFolder").value === "__new__") {
+    const name = getElement("saveNewFolderName").value.trim();
     if (!name) return;
     if (
       notebook.collections.some(
         (c) => c.name.toLowerCase() === name.toLowerCase(),
       )
     ) {
-      $("saveReviewError").textContent =
+      getElement("saveReviewError").textContent =
         "That folder already exists. Choose it above or use another name.";
       return;
     }
@@ -995,26 +1148,33 @@ $("saveReviewForm").addEventListener("submit", (event) => {
   notebook.activeCollectionId = folder.id;
   const saved = persistNotebook();
   renderCollectionOptions();
-  $("saveCollection").value = folder.id;
+  getElement("saveCollection").value = folder.id;
   updatePassageSavePreview();
-  $("saveReviewDialog").close();
+  getElement("saveReviewDialog").close();
   pendingSave = null;
   openNotebook(folder.id);
-  $("storageMessage").textContent = saved
+  getElement("storageMessage").textContent = saved
     ? `${item} saved to My notebook / ${folder.name}.`
     : "Saved for this session. Export this folder to keep a backup.";
-  $("saveMessage").textContent = `${item} → My notebook / ${folder.name}`;
-});
-$("deleteFolderButton").addEventListener("click", () => {
+  getElement("saveMessage").textContent =
+    `${item} → My notebook / ${folder.name}`;
+}
+getElement("saveReviewForm").addEventListener("submit", confirmNotebookSave);
+function showFolderDeleteConfirmation() {
   const folder = chosenCollection();
-  $("deleteFolderSummary").textContent =
+  getElement("deleteFolderSummary").textContent =
     `“${folder.name}” contains ${folder.entries.length} saved passages${folder.outline ? " and a study outline" : ""}. It will move to Recently deleted, where you can restore it.`;
-  $("deleteFolderConfirm").classList.remove("hidden");
-});
-$("cancelDeleteFolder").addEventListener("click", () =>
-  $("deleteFolderConfirm").classList.add("hidden"),
+  getElement("deleteFolderConfirm").classList.remove("hidden");
+}
+getElement("deleteFolderButton").addEventListener(
+  "click",
+  showFolderDeleteConfirmation,
 );
-$("confirmDeleteFolder").addEventListener("click", () => {
+getElement("cancelDeleteFolder").addEventListener("click", () =>
+  getElement("deleteFolderConfirm").classList.add("hidden"),
+);
+// Keep the whole folder in trash so restoring it also restores notes and outlines.
+function deleteNotebookFolder() {
   // Move rather than permanently erase: Recently deleted retains the whole folder.
   const folder = chosenCollection();
   notebook.collections = notebook.collections.filter((c) => c.id !== folder.id);
@@ -1029,9 +1189,13 @@ $("confirmDeleteFolder").addEventListener("click", () => {
   persistNotebook();
   renderCollectionOptions();
   openNotebook(notebook.activeCollectionId);
-  $("storageMessage").textContent =
+  getElement("storageMessage").textContent =
     `${folder.name} moved to Recently deleted. You can restore it from the folder sidebar.`;
-});
+}
+getElement("confirmDeleteFolder").addEventListener(
+  "click",
+  deleteNotebookFolder,
+);
 // Restore the stored folder object, including its notes and outline. Resolve name
 // or ID collisions if a new folder was created while this one was deleted.
 function restoreFolder(id) {
@@ -1050,11 +1214,11 @@ function restoreFolder(id) {
   persistNotebook();
   renderCollectionOptions();
   openNotebook(folder.id);
-  $("storageMessage").textContent =
+  getElement("storageMessage").textContent =
     `Restored ${folder.name}, including its passages and notes.`;
 }
 // Export uses the complete folder object, even when its UI search hides some entries.
-$("exportButton").addEventListener("click", () => {
+function exportNotebookFolder() {
   const collection = chosenCollection();
   const blob = new Blob([toMarkdown(collection)], {
     type: "text/markdown;charset=utf-8",
@@ -1065,8 +1229,13 @@ $("exportButton").addEventListener("click", () => {
   a.download = `${collection.name.replace(/[^a-z0-9_-]+/gi, "-") || "study"}.md`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-});
+}
+getElement("exportButton").addEventListener("click", exportNotebookFolder);
 renderCollectionOptions();
+
+// -----------------------------------------------------------------------------
+// 8. COMPARISON FINDINGS AND BACKGROUND AI REQUESTS
+// -----------------------------------------------------------------------------
 
 function findReference(reference, side) {
   return cy
@@ -1080,7 +1249,7 @@ function findReference(reference, side) {
     )[0];
 }
 function revealReferences(refs) {
-  $("filterList")
+  getElement("filterList")
     .querySelectorAll("input")
     .forEach((i) => {
       if (i.value === "verse") i.checked = true;
@@ -1118,13 +1287,13 @@ function citationButtons(container, references, side) {
 }
 function renderInsights(report, message, loading = false) {
   currentReport = report;
-  $("comparisonInsights").setAttribute("aria-busy", String(loading));
-  $("retryComparisonButton").classList.add("hidden");
-  $("comparisonInsights").classList.remove("hidden");
-  $("comparisonOverview").textContent = report.overview;
-  $("insightsStatus").textContent = message;
-  $("similarityCards").replaceChildren();
-  $("differenceCards").replaceChildren();
+  getElement("comparisonInsights").setAttribute("aria-busy", String(loading));
+  getElement("retryComparisonButton").classList.add("hidden");
+  getElement("comparisonInsights").classList.remove("hidden");
+  getElement("comparisonOverview").textContent = report.overview;
+  getElement("insightsStatus").textContent = message;
+  getElement("similarityCards").replaceChildren();
+  getElement("differenceCards").replaceChildren();
   for (const [kind, items, id] of [
     ["similarity", report.similarities, "similarityCards"],
     ["difference", report.differences, "differenceCards"],
@@ -1168,7 +1337,7 @@ function renderInsights(report, message, loading = false) {
         else revealReferences([...item.left_refs, ...item.right_refs]);
       });
       card.append(focus);
-      $(id).append(card);
+      getElement(id).append(card);
     });
     if (!items.length) {
       const placeholder = document.createElement("p");
@@ -1182,14 +1351,14 @@ function renderInsights(report, message, loading = false) {
         : kind === "similarity"
           ? "No supported connection identified in this selection."
           : "No supported difference identified in this selection.";
-      $(id).append(placeholder);
+      getElement(id).append(placeholder);
     }
   }
-  $("studyQuestions").replaceChildren();
+  getElement("studyQuestions").replaceChildren();
   report.study_questions.forEach((q) => {
     const li = document.createElement("li");
     li.textContent = q;
-    $("studyQuestions").append(li);
+    getElement("studyQuestions").append(li);
   });
   cy.edges('[type="theme-bridge"]').remove();
   report.similarities.forEach((item, index) => {
@@ -1216,9 +1385,9 @@ function renderInsights(report, message, loading = false) {
   });
   cy.edges('[type="theme-bridge"]').style(
     "display",
-    $("themeLinks").checked ? "element" : "none",
+    getElement("themeLinks").checked ? "element" : "none",
   );
-  $("edgeCount").textContent = cy.edges().length;
+  getElement("edgeCount").textContent = cy.edges().length;
   updateThematicStats();
   fitGraph();
 }
@@ -1269,7 +1438,7 @@ async function loadComparison(data, number) {
         preview,
         "AI comparison could not finish. The findings below use word matches only. Retry for a deeper comparison.",
       );
-      $("retryComparisonButton").classList.remove("hidden");
+      getElement("retryComparisonButton").classList.remove("hidden");
     }
   } finally {
     clearTimeout(timer);
@@ -1282,7 +1451,7 @@ async function loadExplanations(query, number) {
   const controller = new AbortController();
   backgroundController = controller;
   const timer = setTimeout(() => controller.abort(), 70000);
-  $("footerMessage").textContent =
+  getElement("footerMessage").textContent =
     "Graph ready · loading AI explanations in the background";
   try {
     const response = await fetch(
@@ -1306,27 +1475,34 @@ async function loadExplanations(query, number) {
     const selected =
       cy.nodes(".focused")[0] || cy.getElementById(enriched.center);
     showNodeDetails(selected);
-    $("footerMessage").textContent = "Graph and explanations ready";
+    getElement("footerMessage").textContent = "Graph and explanations ready";
   } catch (_) {
     if (number === requestNumber)
-      $("footerMessage").textContent =
+      getElement("footerMessage").textContent =
         "Graph ready · AI explanations unavailable";
   } finally {
     clearTimeout(timer);
     if (backgroundController === controller) backgroundController = null;
   }
 }
-$("retryComparisonButton").addEventListener("click", () => {
+getElement("retryComparisonButton").addEventListener("click", () => {
   if (currentData?.comparison) loadComparison(currentData, requestNumber);
 });
-$("themeLinks").addEventListener("change", applyFilters);
-$("toggleInsightsButton").addEventListener("click", () => {
-  const collapsed = $("insightsBody").classList.toggle("hidden");
-  $("toggleInsightsButton").textContent = collapsed ? "Expand" : "Collapse";
-  $("toggleInsightsButton").setAttribute("aria-expanded", String(!collapsed));
+getElement("themeLinks").addEventListener("change", applyFilters);
+getElement("toggleInsightsButton").addEventListener("click", () => {
+  const collapsed = getElement("insightsBody").classList.toggle("hidden");
+  getElement("toggleInsightsButton").textContent = collapsed
+    ? "Expand"
+    : "Collapse";
+  getElement("toggleInsightsButton").setAttribute(
+    "aria-expanded",
+    String(!collapsed),
+  );
   fitGraph();
 });
-$("saveOutlineButton").addEventListener("click", () => reviewSave("outline"));
+getElement("saveOutlineButton").addEventListener("click", () =>
+  reviewSave("outline"),
+);
 // Start waking the backend while the visitor decides what to search.
 fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(90000) }).catch(
   () => {},
