@@ -109,3 +109,7 @@ Search optimizations include parallel passage/entity retrieval, ten-minute proce
 Endpoints: `GET /explore?fast=1&q=...` returns retrieval before final AI explanation; `GET /explain?q=...` enriches that retrieved graph; `POST /compare` accepts JSON `{"left":"fear","right":"hope"}` and returns evidence-checked findings. The frontend wakes `/health` when opened. Caches are in memory and reset on service restart. Render free-tier cold starts can still add delay; these code changes do not make a sleeping service permanently available.
 
 Run frontend checks with `node --test scripture-graph/tests/graph.test.cjs` from the frontend repo. Run backend checks with `python -m unittest discover -s tests` from the backend repo, with its dependencies installed.
+
+### Notebook folders
+
+Open **My notebook** in the left sidebar. Choose a folder to view its saved passages and study outline, create or rename folders, search saved text/notes, and export the entire folder as Markdown. Passage notes save automatically. The notebook remembers the last selected folder and keeps existing stored studies. Storage remains local to this browser and device.

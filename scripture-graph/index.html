@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Scripture Graph · Compare & Study</title>
-  <link rel="stylesheet" href="styles.css?v=sidebar-cleanup" />
+  <link rel="stylesheet" href="styles.css?v=notebook-folders" />
   <script defer src="https://unpkg.com/cytoscape@3.31.2/dist/cytoscape.min.js"></script>
-  <script defer src="graph-utils.js?v=sidebar-cleanup"></script>
-  <script defer src="app.js?v=sidebar-cleanup"></script>
+  <script defer src="graph-utils.js?v=notebook-folders"></script>
+  <script defer src="app.js?v=notebook-folders"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -21,6 +21,7 @@
       <div class="system-status"><span class="status-dot"></span><span id="apiStatus" role="status">READY</span></div>
     </header>
     <aside class="left-panel">
+      <button id="notebookHomeButton" class="notebook-home"><span>▣ MY NOTEBOOK</span><small id="notebookHomeCount">Your saved folders &amp; passages</small></button>
       <div id="comparisonPanel" class="hidden">
         <div class="panel-heading">CONNECTIONS BETWEEN SEARCHES</div>
         <div id="comparisonStats"></div><div id="thematicStats" role="status"></div><div id="thematicList"></div>
@@ -48,18 +49,29 @@
     <aside class="inspector">
       <div class="panel-heading">INSPECTOR</div><div class="inspector-type" id="detailType">NO SELECTION</div><h1 id="detailLabel">Scripture Graph</h1><p class="detail-summary" id="detailSummary">Search once to explore, or enter a second search to compare.</p><details id="detailMore" class="hidden"><summary>Read more</summary><p id="detailFullSummary"></p></details>
       <blockquote id="verseText" class="verse-text hidden"></blockquote>
-      <div id="saveControls" class="hidden"><label for="saveCollection">Save to collection</label><select id="saveCollection"></select><button id="saveVerseButton">Save passage</button><p id="saveMessage" role="status"></p></div>
+      <div id="saveControls" class="hidden"><label for="saveCollection">Save to folder</label><select id="saveCollection"></select><button id="saveVerseButton">Save passage</button><p id="saveMessage" role="status"></p></div>
       <div id="detailMeta" class="detail-meta"></div><div class="connections-header"><span id="inspectorConnectionsTitle">CONNECTIONS</span><span id="connectionCount">—</span></div><div id="connectionList"><div class="empty-state">No node selected.</div></div>
     </aside>
     <footer class="footerbar"><span>P2 / COMPARE & STUDY</span><span id="footerMessage">READY</span></footer>
   </div>
-  <dialog id="notebookDialog">
-    <div class="notebook-header"><div><div class="panel-heading">YOUR STUDY WORKSPACE</div><h2>Study notebook</h2></div><button id="closeNotebook">Close</button></div>
-    <p class="help-text">Saved in this browser on this device. Export a backup before clearing browser data. Notes stay in your browser.</p>
+  <dialog id="notebookDialog" aria-labelledby="notebookTitle">
+    <div class="notebook-header"><div><div class="panel-heading">YOUR SAVED STUDIES</div><h2 id="notebookTitle">My notebook</h2></div><button id="closeNotebook">Close notebook</button></div>
+    <p class="notebook-storage">Stored in this browser on this device. Export a folder to keep a backup.</p>
     <p id="storageMessage" role="status"></p>
-    <form id="collectionForm"><label class="sr-only" for="collectionName">New collection name</label><input id="collectionName" placeholder="New collection name" maxlength="80" required /><button>Create collection</button></form>
-    <div class="notebook-toolbar"><label for="notebookCollection">Collection</label><select id="notebookCollection"></select><button id="exportButton">Export Markdown</button></div>
-    <div id="notebookEntries"></div>
+    <div class="notebook-layout">
+      <aside class="notebook-folders" aria-label="Notebook folders">
+        <div class="panel-heading">FOLDERS <span id="folderCount"></span></div>
+        <nav id="folderList" aria-label="Choose a notebook folder"></nav>
+        <form id="collectionForm"><label for="collectionName">Create a folder</label><input id="collectionName" placeholder="Folder name" maxlength="80" required /><button>Create folder</button></form>
+      </aside>
+      <section class="notebook-content" aria-label="Open folder">
+        <div class="notebook-breadcrumb">My notebook / <span id="folderBreadcrumb"></span></div>
+        <div class="notebook-folder-header"><div><h3 id="folderTitle"></h3><p id="folderSummary"></p></div><div><button id="renameFolderButton">Rename</button><button id="exportButton">Export folder</button></div></div>
+        <form id="renameFolderForm" class="hidden"><label for="renameFolderName">Folder name</label><input id="renameFolderName" maxlength="80" required /><button>Save name</button><button id="cancelRenameButton" type="button">Cancel</button></form>
+        <label class="sr-only" for="notebookSearch">Search this folder</label><input id="notebookSearch" type="search" placeholder="Find a passage or note in this folder" />
+        <div id="notebookEntries"></div>
+      </section>
+    </div>
   </dialog>
 </body>
 </html>

@@ -28,7 +28,7 @@ try {
 } catch (_) { $('storageMessage').textContent = 'Saved data could not be read. Export this session before closing it.'; }
 
 function persistNotebook() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(notebook)); $('storageMessage').textContent = 'Notebook saved in this browser.'; return true; }
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(notebook)); $('storageMessage').textContent = 'Saved in this browser.'; updateNotebookCounts(); return true; }
   catch (_) { $('storageMessage').textContent = 'Browser storage is unavailable or full. Your changes are kept for this session; export a backup.'; return false; }
 }
 function status(message) { $('apiStatus').textContent = message; $('footerMessage').textContent = message; }
@@ -215,36 +215,70 @@ function applyFilters() {
   updateThematicStats();
   $('footerMessage').textContent = `${cy.nodes(':visible').length} visible nodes`;
 }
+function chosenCollection() { return notebook.collections.find(c=>c.id===notebook.activeCollectionId) || notebook.collections[0]; }
 function renderCollectionOptions() {
-  for (const id of ['saveCollection','notebookCollection']) {
-    const previous = $(id).value;
-    $(id).innerHTML = notebook.collections.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
-    if (notebook.collections.some(c => c.id === previous)) $(id).value = previous;
-  }
+  const previous=$('saveCollection').value;
+  $('saveCollection').innerHTML=notebook.collections.map(c=>`<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
+  if(notebook.collections.some(c=>c.id===previous)) $('saveCollection').value=previous;
+  updateNotebookCounts();
 }
-function chosenCollection() { return notebook.collections.find(c => c.id === $('notebookCollection').value) || notebook.collections[0]; }
+function updateNotebookCounts() {
+  const total=notebook.collections.reduce((sum,c)=>sum+c.entries.length,0);
+  $('notebookHomeCount').textContent=`${notebook.collections.length} ${notebook.collections.length===1?'folder':'folders'} · ${total} saved ${total===1?'passage':'passages'}`;
+  $('folderCount').textContent=notebook.collections.length;
+  $('folderList').replaceChildren();
+  notebook.collections.forEach(c=> {
+    const button=document.createElement('button');button.className='notebook-folder';button.setAttribute('aria-current',String(c.id===chosenCollection().id));
+    const title=document.createElement('span');title.textContent=`▱ ${c.name}`;
+    const count=document.createElement('small');count.textContent=`${c.entries.length} ${c.entries.length===1?'passage':'passages'}${c.outline?' · study outline':''}`;
+    button.append(title,count);button.addEventListener('click',()=>openNotebook(c.id));$('folderList').append(button);
+  });
+  const c=chosenCollection(),notes=c.entries.filter(e=>e.note.trim()).length;
+  $('folderSummary').textContent=`${c.entries.length} saved ${c.entries.length===1?'passage':'passages'} · ${notes} ${notes===1?'note':'notes'}${c.outline?' · 1 study outline':''}`;
+}
+function openNotebook(id) {
+  if(id && notebook.collections.some(c=>c.id===id)) {notebook.activeCollectionId=id;persistNotebook();}
+  $('saveCollection').value=chosenCollection().id;
+  $('notebookSearch').value='';$('renameFolderForm').classList.add('hidden');renderNotebook();
+  if(!$('notebookDialog').open) $('notebookDialog').showModal();
+}
 function renderNotebook() {
-  const collection = chosenCollection(); $('notebookEntries').replaceChildren(); $('exportButton').disabled = !collection.entries.length && !collection.outline;
-  if (collection.outline) {
-    const summary = document.createElement('section'); summary.className = 'saved-outline';
-    const title = document.createElement('h3'); title.textContent = 'Your comparison study outline'; summary.append(title);
-    const p = document.createElement('p'); p.textContent = collection.outline.overview; summary.append(p);
-    const provenance = document.createElement('p'); provenance.className='help-text'; provenance.textContent = collection.outline.method === 'ai' ? 'AI-assisted interpretation of retrieved passages.' : 'Text-based preview from retrieved passages.'; summary.append(provenance);
-    [...collection.outline.similarities,...collection.outline.differences].forEach(item=> { const finding=document.createElement('p'); finding.textContent=`${item.title}: ${item.explanation || ('A: '+item.left_focus+' B: '+item.right_focus)} · A: ${item.left_refs.join(', ')} · B: ${item.right_refs.join(', ')}`; summary.append(finding); });
-    const list = document.createElement('ol'); collection.outline.study_questions.forEach(q=> { const li=document.createElement('li'); li.textContent=q; list.append(li); }); summary.append(list); $('notebookEntries').append(summary);
+  const collection=chosenCollection();updateNotebookCounts();$('folderTitle').textContent=collection.name;$('folderBreadcrumb').textContent=collection.name;
+  $('notebookEntries').replaceChildren();$('exportButton').disabled=!collection.entries.length && !collection.outline;
+  const search=$('notebookSearch').value.trim().toLowerCase();
+  if(collection.outline && !search) {
+    const outline=document.createElement('details');outline.className='notebook-outline';
+    const heading=document.createElement('summary');heading.textContent='Saved comparison outline';outline.append(heading);
+    const p=document.createElement('p');p.textContent=collection.outline.overview;outline.append(p);
+    const provenance=document.createElement('p');provenance.className='help-text';provenance.textContent=collection.outline.method==='ai'?'AI interpretation with supporting passages.':'Text-based study preview.';outline.append(provenance);
+    [...collection.outline.similarities,...collection.outline.differences].forEach(item=> {
+      const finding=document.createElement('details'),title=document.createElement('summary'),body=document.createElement('p');
+      title.textContent=item.title;body.textContent=item.explanation || `A: ${item.left_focus} B: ${item.right_focus}`;
+      const evidence=document.createElement('p');evidence.className='help-text';evidence.textContent=`A: ${item.left_refs.join(', ')} · B: ${item.right_refs.join(', ')}`;
+      finding.append(title,body,evidence);outline.append(finding);
+    });
+    const questions=document.createElement('h4');questions.textContent='Study questions';outline.append(questions);
+    const list=document.createElement('ol');collection.outline.study_questions.forEach(q=>{const li=document.createElement('li');li.textContent=q;list.append(li);});outline.append(list);$('notebookEntries').append(outline);
   }
-  if (!collection.entries.length) { if (!collection.outline) $('notebookEntries').textContent = 'Select a verse in the graph and save it here to start your study.'; return; }
-  collection.entries.forEach(entry => {
-    const article = document.createElement('article'); article.className = 'saved-entry';
-    const heading = document.createElement('h3'); heading.textContent = entry.reference;
-    const quote = document.createElement('blockquote'); quote.textContent = entry.text;
-    const meta = document.createElement('p'); meta.className = 'help-text'; meta.textContent = `Source: ${entry.source} · Search: ${entry.query}`;
-    const label = document.createElement('label'); label.textContent = 'My notes';
-    const textarea = document.createElement('textarea'); textarea.value = entry.note; textarea.maxLength = 10000; textarea.rows = 4; label.append(textarea);
-    textarea.addEventListener('input', () => { entry.note = textarea.value; persistNotebook(); });
-    const remove = document.createElement('button'); remove.textContent = 'Remove passage';
-    remove.addEventListener('click', () => { collection.entries = collection.entries.filter(e => e !== entry); persistNotebook(); renderNotebook(); });
-    article.append(heading,quote,meta,label,remove); $('notebookEntries').append(article);
+  const entries=collection.entries.filter(e=>`${e.reference} ${e.text} ${e.note}`.toLowerCase().includes(search));
+  if(!entries.length) {
+    const empty=document.createElement('div');empty.className='notebook-empty';
+    const title=document.createElement('h4');title.textContent=search?'No matching passages':'This folder is ready for your study';
+    const text=document.createElement('p');text.textContent=search?'Try a verse reference or a word from your notes.':'Select a verse in the graph, choose this folder under Save to folder, and click Save passage. You can also save a whole comparison outline.';
+    empty.append(title,text);$('notebookEntries').append(empty);return;
+  }
+  entries.forEach(entry=> {
+    const article=document.createElement('details');article.className='saved-entry';
+    const heading=document.createElement('summary'),reference=document.createElement('span'),badge=document.createElement('small');
+    reference.textContent=entry.reference;badge.textContent=entry.note.trim()?'Has a note':'Add a note';heading.append(reference,badge);
+    const quote=document.createElement('blockquote');quote.textContent=entry.text;
+    const meta=document.createElement('details'),metaTitle=document.createElement('summary'),metaBody=document.createElement('p');meta.className='saved-source';metaTitle.textContent='Source & original search';metaBody.textContent=`${entry.source} · ${entry.query}`;meta.append(metaTitle,metaBody);
+    const label=document.createElement('label');label.textContent='Your notes';
+    const textarea=document.createElement('textarea');textarea.value=entry.note;textarea.maxLength=10000;textarea.rows=3;textarea.placeholder='What stands out to you in this passage?';label.append(textarea);
+    textarea.addEventListener('input',()=>{entry.note=textarea.value;badge.textContent=entry.note.trim()?'Has a note':'Add a note';persistNotebook();});
+    const remove=document.createElement('button');remove.className='remove-passage';remove.textContent='Remove from folder';
+    remove.addEventListener('click',()=>{collection.entries=collection.entries.filter(e=>e!==entry);persistNotebook();renderNotebook();});
+    article.append(heading,quote,meta,label,remove);$('notebookEntries').append(article);
   });
 }
 $('searchForm').addEventListener('submit',event => { event.preventDefault(); runSearch(); });
@@ -253,19 +287,27 @@ $('retryButton').addEventListener('click', () => { if (lastSearch) runSearch(...
 $('fitButton').addEventListener('click', fitGraph);
 $('resetButton').addEventListener('click', () => { if (!cy) return; $('filterList').querySelectorAll('input').forEach(i => i.checked = true); applyFilters(); showNodeDetails(cy.getElementById(currentData.center)); });
 document.querySelectorAll('[data-query]').forEach(button => button.addEventListener('click', () => { $('searchInput').value = button.dataset.query; $('compareInput').value = button.dataset.compare || ''; runSearch(); }));
-$('notebookButton').addEventListener('click', () => { renderNotebook(); $('notebookDialog').showModal(); });
+$('notebookButton').addEventListener('click',()=>openNotebook());
+$('notebookHomeButton').addEventListener('click',()=>openNotebook());
+$('notebookSearch').addEventListener('input',renderNotebook);
 $('closeNotebook').addEventListener('click', () => $('notebookDialog').close());
-$('notebookCollection').addEventListener('change',renderNotebook);
 $('collectionForm').addEventListener('submit',event => {
   event.preventDefault(); const name = $('collectionName').value.trim(); if (!name) return;
   const existing = notebook.collections.find(c => c.name.toLowerCase() === name.toLowerCase());
-  if (existing) { $('notebookCollection').value = existing.id; renderNotebook(); $('storageMessage').textContent = 'Opened the existing collection with that name.'; return; }
+  if (existing) { openNotebook(existing.id); $('storageMessage').textContent = 'Opened the existing folder with that name.'; return; }
   const collection = {id:crypto.randomUUID(),name,entries:[]}; notebook.collections.push(collection); persistNotebook(); renderCollectionOptions();
-  $('notebookCollection').value = collection.id; $('saveCollection').value = collection.id; $('collectionName').value = ''; renderNotebook();
+  $('saveCollection').value = collection.id; $('collectionName').value = ''; openNotebook(collection.id);
+});
+$('renameFolderButton').addEventListener('click',()=>{$('renameFolderName').value=chosenCollection().name;$('renameFolderForm').classList.remove('hidden');$('renameFolderName').focus();});
+$('cancelRenameButton').addEventListener('click',()=>$('renameFolderForm').classList.add('hidden'));
+$('renameFolderForm').addEventListener('submit',event=> {
+  event.preventDefault();const name=$('renameFolderName').value.trim(),collection=chosenCollection();if(!name) return;
+  if(notebook.collections.some(c=>c.id!==collection.id && c.name.toLowerCase()===name.toLowerCase())) {$('storageMessage').textContent='Another folder already has that name.';return;}
+  collection.name=name;persistNotebook();renderCollectionOptions();renderNotebook();$('renameFolderForm').classList.add('hidden');
 });
 $('saveVerseButton').addEventListener('click', () => {
   if (!selectedPassage) return; const collection = notebook.collections.find(c => c.id === $('saveCollection').value);
-  if (collection.entries.some(e => e.id === selectedPassage.id)) { $('saveMessage').textContent = 'Already saved in this collection.'; return; }
+  if (collection.entries.some(e => e.id === selectedPassage.id)) { $('saveMessage').textContent = 'Already saved in this folder.'; return; }
   collection.entries.push({...selectedPassage});
   $('saveMessage').textContent = persistNotebook() ? `Saved to ${collection.name}.` : 'Saved for this session. Open the notebook and export a backup.';
 });
@@ -368,8 +410,8 @@ $('toggleInsightsButton').addEventListener('click',()=> {const collapsed=$('insi
 $('saveOutlineButton').addEventListener('click',()=> {
   if(!currentReport || !currentData?.comparison) return;
   const collection={id:crypto.randomUUID(),...buildStudyOutline(currentData,currentReport)};
-  notebook.collections.push(collection); persistNotebook(); renderCollectionOptions(); $('notebookCollection').value=collection.id; $('saveCollection').value=collection.id;
-  renderNotebook(); $('notebookDialog').showModal();
+  notebook.collections.push(collection); persistNotebook(); renderCollectionOptions(); $('saveCollection').value=collection.id;
+  openNotebook(collection.id);
 });
 // Start waking the backend while the visitor decides what to search.
 fetch(`${API_BASE}/health`,{signal:AbortSignal.timeout(90000)}).catch(()=>{});

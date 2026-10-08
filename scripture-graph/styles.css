@@ -250,3 +250,47 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .connection-evidence summary { cursor: pointer; color: #b5c0c7; }
 .connection-evidence button { margin-top: 10px; font-size: 11px; }
 #detailFullSummary { font-size: 12px; line-height: 1.6; color: var(--muted); }
+
+/* Folder-based notebook workspace. */
+.notebook-home { width: 100%; display: grid; gap: 6px; text-align: left; padding: 14px 12px; margin-bottom: 22px; border: 1px solid #78653d; background: #1b1b16; }
+.notebook-home > span { color: #f1cf75; font-size: 12px; font-weight: 700; letter-spacing: .07em; }
+.notebook-home small { color: #aeb9c2; font-size: 11px; }
+#notebookDialog { width: min(1050px, 94vw); height: min(780px, 88vh); max-height: 88vh; padding: 24px; overflow: hidden; }
+#notebookDialog[open] { display: flex; flex-direction: column; }
+.notebook-storage { color: var(--muted); font-size: 12px; margin: 9px 0 0; }
+#storageMessage { min-height: 17px; margin: 8px 0 14px; }
+.notebook-layout { display: grid; grid-template-columns: 230px minmax(0,1fr); min-height: 0; flex: 1; border-top: 1px solid var(--line); }
+.notebook-folders { padding: 20px 18px 0 0; border-right: 1px solid var(--line); overflow-y: auto; }
+.notebook-folders .panel-heading { display: flex; justify-content: space-between; }
+.notebook-folder { display: grid; gap: 7px; width: 100%; text-align: left; padding: 13px; margin-bottom: 8px; background: transparent; border-color: var(--line); }
+.notebook-folder > span { font-size: 13px; overflow-wrap: anywhere; }
+.notebook-folder > small { color: var(--muted); font-size: 11px; }
+.notebook-folder[aria-current="true"] { border-color: #a78c50; background: #23221b; }
+.notebook-folder[aria-current="true"] > span { color: #f1cf75; }
+#collectionForm { display: grid; gap: 8px; margin-top: 24px; }
+#collectionForm label { font-size: 12px; color: var(--muted); }
+#collectionForm button { font-size: 12px; }
+.notebook-content { min-width: 0; overflow-y: auto; padding: 20px 0 20px 24px; }
+.notebook-breadcrumb { font-size: 11px; color: var(--muted); margin-bottom: 12px; }
+.notebook-folder-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.notebook-folder-header h3 { margin: 0; font-size: 23px; overflow-wrap: anywhere; }
+#folderSummary { margin: 8px 0 18px; font-size: 12px; color: var(--muted); }
+.notebook-folder-header button { font-size: 11px; }
+#notebookSearch { width: 100%; color: var(--text); background: var(--panel2); padding: 11px 13px; border: 1px solid var(--line); margin-bottom: 18px; font-size: 12px; }
+#renameFolderForm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; font-size: 12px; }
+#renameFolderName { min-width: 0; color: var(--text); background: var(--panel2); padding: 8px; border: 1px solid var(--line); }
+.notebook-outline { border: 1px solid #685b3e; padding: 14px; margin-bottom: 16px; font-size: 13px; line-height: 1.7; }
+.notebook-outline > summary { color: #f1cf75; font-weight: 600; cursor: pointer; }
+.notebook-outline details { margin: 10px 0; }
+.notebook-outline details > summary { cursor: pointer; }
+.saved-entry { border: 1px solid var(--line); padding: 14px 16px; margin: 10px 0; }
+.saved-entry > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; font-weight: 600; font-size: 14px; }
+.saved-entry > summary > span::before { content: '▸ '; color: #aeb9c2; }
+.saved-entry[open] > summary > span::before { content: '▾ '; }
+.saved-entry > summary small { font-size: 10px; font-weight: 400; color: #d8bd79; }
+.saved-entry blockquote { font-size: 15px; margin: 16px 0; }
+.saved-source { font-size: 11px; color: var(--muted); margin: 12px 0; }
+.saved-source summary { cursor: pointer; }
+.remove-passage { font-size: 11px; color: #b3bcc3; background: transparent; }
+.notebook-empty { border: 1px dashed #46525b; padding: 28px; font-size: 13px; line-height: 1.7; color: var(--muted); }
+.notebook-empty h4 { margin: 0; color: var(--text); font-size: 17px; }

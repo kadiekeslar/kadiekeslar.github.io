@@ -88,3 +88,9 @@ Added live thematic-link counts separately from identical passage overlap, selec
 ## Sidebar cleanup
 
 User requested removing the identical-passage count, Shared passages only control, and yellow-connection instruction. Removed these elements and the unused shared-only filtering handlers.
+
+## Notebook folders redesign
+
+User prompt (verbatim): “redo the notebook section it should be more clear where its at and the folders in them and stuff like that”
+
+Added a prominent notebook entry with folder/passage totals, folder navigation and active-folder highlighting, breadcrumb and counts, folder creation/renaming/search/export, collapsed saved passages and study outlines, and note indicators. Existing version-1 storage remains compatible. Browser checks covered existing saved data, folder creation, rename, selected-folder persistence, note editing/persistence, folder search, and export of the whole folder despite a filtered view.
