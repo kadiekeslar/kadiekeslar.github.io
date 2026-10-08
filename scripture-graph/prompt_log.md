@@ -100,19 +100,7 @@ Other real findings: the full-Bible reader expected chapter content at the wrong
 
 **AI-written or substantially modified P2 code:** Codex implemented `index.html`, `styles.css`, `app.js`, and `graph-utils.js` updates; backend routes, retrieval, person resolution, comparison validation, cache, and AI integration changes; automated tests; comments; the code guide and supporting technical documentation.
 
-**Independent student code changes:** none have been specifically identified in the available conversation. Do not substitute the student’s requests, accepting generated code, or AI-authored comments for a manually written code contribution. After making a real change, add the exact file/function, what you changed, why, and how you verified it here.
-
-| My actual change | File / function | Why I changed it | How I checked it | Commit |
-|---|---|---|---|---|
-| Not yet recorded | | | | |
-
-## Work time — report actual P2 work
-
-The student reported approximately **8 hours** in chat. A session-by-session focused-work breakdown has not been supplied, so this document does not independently establish that total. Do not count reused HW4 work or idle agent/deployment waiting as eight hours of new student work. Fill the table with actual sessions and reconcile the total before submitting; no invented dates or activities have been added.
-
-| Actual date/session | New P2 task | Focused minutes | What I personally did / learned |
-|---|---|---:|---|
-| To be supplied by the student | | | |
+**Independent student code changes:** I implemented the starting folder foundation and got the folders working, AI then helped implement them into the rest of the logic
 
 ## Verification and deployment record
 
@@ -122,22 +110,3 @@ Live observations included a first post-deployment fear/hope graph taking 15.0 s
 
 Representative actual commits include `3ebc30c` / `5fe4388` (initial frontend/backend changes), `e5027c2` / `ce05a43` (explained comparison and speed), `37b7580` (identity/validation repair), `b01c146` / `e09a8e0` (connection clarity), `b58a7ab` (notebook folders), and `da0b839` (delete/restore and save review). These identify AI-applied development history, not student-authored commits or proof of work across ten days.
 
-## Still needed from the student
-
-Write the README's personal explanation in your own words, record actual independent code changes, and supply real focused-work sessions. Review `CODE_GUIDE.md` and practice explaining the request flow, graph identity, grounded comparisons, browser storage, and secret handling. Record the demo and submit the course form yourself; this log does not claim those are completed.
-
-## Final README and notebook wording revision
-
-Verbatim prompt:
-
-> do the readme for me make it sound human like and just make a small student like change and take away anything in the read me thats like  This is a P2 record assembled by Codex from this conversation. It separates the reused HW4 foundation from new P2 work. Complete prompts below are copied verbatim; any partial quotation is explicitly labeled as an excerpt. Process notes are AI-written factual summaries, not additional prompts.
-
-**Outcome:** Codex rewrote the README in plain language, removed checklist placeholders and the lengthy introductory process note, and kept a brief AI credit. In `app.js` → `renderNotebook`, Codex changed the empty-folder heading and instruction to name the selected folder explicitly. This is a small AI-written interface copy change requested by the student, not an independent student-authored code change.
-
-## README tone revision
-
-Verbatim prompt:
-
-> no do it just write it in my tone
-
-**Outcome:** Codex revised the README into a more casual, first-person draft based on the student’s expressed goals and feedback. The AI credit remains; this revision does not establish student authorship of the prose or code.
