@@ -133,3 +133,11 @@ Verbatim prompt:
 > do the readme for me make it sound human like and just make a small student like change and take away anything in the read me thats like  This is a P2 record assembled by Codex from this conversation. It separates the reused HW4 foundation from new P2 work. Complete prompts below are copied verbatim; any partial quotation is explicitly labeled as an excerpt. Process notes are AI-written factual summaries, not additional prompts.
 
 **Outcome:** Codex rewrote the README in plain language, removed checklist placeholders and the lengthy introductory process note, and kept a brief AI credit. In `app.js` → `renderNotebook`, Codex changed the empty-folder heading and instruction to name the selected folder explicitly. This is a small AI-written interface copy change requested by the student, not an independent student-authored code change.
+
+## README tone revision
+
+Verbatim prompt:
+
+> no do it just write it in my tone
+
+**Outcome:** Codex revised the README into a more casual, first-person draft based on the student’s expressed goals and feedback. The AI credit remains; this revision does not establish student authorship of the prose or code.

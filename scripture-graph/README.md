@@ -2,9 +2,9 @@
 
 [Try the app](https://kadiekeslar.github.io/scripture-graph/) · [Backend code](https://github.com/kadiekeslar/scripture-graph-backend) · [Prompt log](prompt_log.md) · [Code guide](CODE_GUIDE.md)
 
-Scripture Graph helps you explore Bible passages and compare ideas without opening every verse one at a time. Search for a reference, person, topic, or question, then add a second search to see how the two selections relate. You can save passages and comparisons in notebook folders and add your own notes.
+For P2, I wanted to build off my HW4 Scripture Graph and make it more useful for actually studying. You can search for a Bible passage, person, topic, or question and compare it with another search. The app shows similarities and differences, and you can save what you find in notebook folders.
 
-This project builds on the Scripture Graph from HW4. P2 adds comparisons of meaning, explanations for connections, faster searches, and a notebook for keeping a study together.
+I wanted the connections to be easier to understand. Before, you could see that passages were connected, but you still had to read through them and figure out why. Now, clicking a yellow line gives you an explanation with the passages that support it.
 
 ## Using the app
 
@@ -14,13 +14,13 @@ This project builds on the Scripture Graph from HW4. P2 adds comparisons of mean
 4. Choose **Review & save passage** or **Review & save study**. Check the contents and destination folder, then save.
 5. Open **My notebook** to find your folders, write notes, and export a study. Notes save automatically. Deleted folders go to **Recently deleted**, where you can restore them.
 
-## Features that stand out
+## My favorite parts
 
-The yellow connections are useful because they explain why different passages relate, even when they do not share the same reference. Each explanation points back to supporting passages so you can check it yourself.
+The comparison is the part I care about most. I wanted it to show similarities and differences in what the passages are saying, even if they use different words or are not the exact same passage. You can click the yellow lines to understand the connection instead of just seeing two verses next to each other.
 
-The notebook turns a search into something you can return to. Folders keep passages and notes together, and the save review makes it clear what is being saved and where it will go.
+I also wanted the notebook to be easier to use. You can organize passages into folders, add notes, and come back to a study later. Before saving, you can see exactly what you are saving and which folder it will go into. If you delete a folder by accident, you can restore it.
 
-The graph loads before the optional AI explanation finishes. Repeated searches use cached results, and loading messages show when a comparison is still being prepared.
+Searches were another thing I wanted to improve. The graph can show up while the AI comparison is still loading, and repeated searches use saved results to avoid doing the same work again.
 
 ## Run it locally
 
@@ -40,7 +40,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Create a `.env` file in the backend folder with `OPENAI_API_KEY`. You can also set `OPENAI_MODEL` to a model available to your account. Then run:
+Add your OpenAI key as `OPENAI_API_KEY` in a `.env` file in the backend folder. You can also set `OPENAI_MODEL` if you want to choose the model. Then run:
 
 ```sh
 python app.py
@@ -53,23 +53,23 @@ cd kadiekeslar.github.io
 python3 -m http.server 8000
 ```
 
-Visit `http://localhost:8000/scripture-graph/?api=http://127.0.0.1:5000`. The `api` setting connects the page to your local backend. Without it, the page uses the deployed backend.
+Open `http://localhost:8000/scripture-graph/?api=http://127.0.0.1:5000` in your browser. This connects the page to the backend running on your computer. If you leave off the `api` setting, it uses the hosted backend instead.
 
 ## Secrets and saved notes
 
-The OpenAI key stays on the backend in environment variables or the ignored `.env` file. It is never placed in the frontend code. On Render, it is stored in the service's environment settings.
+The OpenAI key is kept on the backend, not in the webpage code. Locally, it goes in `.env`, which is ignored by Git. For the hosted app, it goes in Render's environment settings.
 
-Searches and retrieved passages may be sent to OpenAI for explanations. Personal notebook notes stay in your browser's local storage. They do not sync between devices, and clearing browser data removes them, so use **Export folder** to keep a backup.
+The app may send your search and the passages it finds to OpenAI to get an explanation. Your notebook notes stay in your browser. They do not carry over to another device, so export your folder if you want a backup. Clearing your browser data also clears the notebook.
 
 ## Checks and limitations
 
 Frontend checks: `node --test scripture-graph/tests/graph.test.cjs` from the frontend repository. Backend checks: `python -m unittest discover -s tests` from the backend repository after installing dependencies.
 
-The app is designed for desktop use. AI explanations cover the passages retrieved for a search and can miss context. Yellow thematic connections are interpretations, not published cross-references. The first search can also take longer if the hosted backend needs to wake up.
+The app is meant for desktop use. The AI compares the passages the search finds, so it can miss context. Yellow connections show suggested shared ideas rather than published cross-references. A first search can still be slow if the hosted backend needs to wake up.
 
 ## AI-generated documentation and credits
 
-This README was drafted by OpenAI Codex using **GPT-6.1 Sol with medium reasoning**. Codex also wrote or substantially modified much of the P2 code, tests, and explanatory comments. The project direction and interface revisions came from the student's requests and feedback. The [prompt log](prompt_log.md) records the development process, including the incorrect Jesus/Justus result and its fix.
+I used OpenAI Codex with **GPT-6.1 Sol, medium reasoning** to help plan changes, write code, debug, and add comments. Codex wrote or changed much of the P2 code and drafted this README. I chose the features and gave feedback on things that were confusing or not working. The [prompt log](prompt_log.md) includes the prompts and fixes, including when a search for Jesus incorrectly returned Jesus called Justus.
 
 The app uses the OpenAI API separately for search interpretation and comparisons. Its model is set through the backend's `OPENAI_MODEL` environment variable.
 
