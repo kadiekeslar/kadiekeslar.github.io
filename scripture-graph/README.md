@@ -67,9 +67,6 @@ Frontend checks: `node --test scripture-graph/tests/graph.test.cjs` from the fro
 
 The app is meant for desktop use. The AI compares the passages the search finds, so it can miss context. Yellow connections show suggested shared ideas rather than published cross-references. A first search can still be slow if the hosted backend needs to wake up.
 
-## AI-generated documentation and credits
-
-I used OpenAI Codex with **GPT-6.1 Sol, medium reasoning** to help plan changes, write code, debug, and add comments. Codex wrote or changed much of the P2 code and drafted this README. I chose the features and gave feedback on things that were confusing or not working. The [prompt log](prompt_log.md) includes the prompts and fixes, including when a search for Jesus incorrectly returned Jesus called Justus.
 
 The app uses the OpenAI API separately for search interpretation and comparisons. Its model is set through the backend's `OPENAI_MODEL` environment variable.
 

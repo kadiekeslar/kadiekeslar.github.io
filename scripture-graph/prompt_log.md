@@ -15,7 +15,7 @@ P2 builds on the HW4 Scripture Graph. The 13 prompts below record the new compar
 
 ## Development process and actual prompts
 
-These are the original app-development prompts, with spelling preserved. 
+These are the original app-development prompts, with spelling preserved.
 
 ### 1. Initial P2 review
 
