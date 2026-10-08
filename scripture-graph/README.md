@@ -1,117 +1,120 @@
-# Scripture Graph: Compare & Study
+# Scripture Graph — Compare & Study
 
-## My project explanation — write this section yourself before submitting
+[Open the app](https://kadiekeslar.github.io/scripture-graph/) · [Backend repository](https://github.com/kadiekeslar/scripture-graph-backend) · [Prompt log](prompt_log.md) · [Code walkthrough](CODE_GUIDE.md)
 
-The assignment requires a README in your own words. Replace these prompts with your own explanation; the technical notes below are labeled as AI-generated.
+## My explanation — student writing required
 
-- What does this app do, and who would use it?
-- What did HW4 already do? What new P2 features change how someone uses it?
-- Which feature are you most proud of, and why?
-- Which exact code changes did you make yourself? Name the function/file and explain your decision.
-- How did you use AI, which tools/models did you use, and what did you verify or correct?
-- State your actual work time and development process in the separate prompt log.
+The course requires this explanation in my own words. The text below is a completion checklist, not a claim that I wrote AI-generated code. Replace the bracketed instructions with my actual explanation before submitting.
+
+### What I built and why
+
+[Explain who would use Scripture Graph and what they can do. Explain how P2 changes the HW4 single-search explorer into a comparison and saved-study workflow.]
+
+### How to use it
+
+[In your words: search once or compare two searches; choose a yellow connection for its explanation; save a passage or study into a folder; reopen the notebook, add notes, export, or restore a deleted folder.]
+
+### Features I am proud of
+
+[Choose the feature you actually care about and explain why. Possibilities include explained connections between different passages, faster graph loading, or the folder notebook.]
+
+### My code contribution and what I learned
+
+[Record a change you actually wrote or substantially modified: file, function, before/after behavior, and how you checked it. No independent P2 code edit has been identified in this conversation yet. Your feature choices and bug reports are recorded separately in the prompt log.]
+
+### How I used AI
+
+[Explain your use of Codex with GPT-6.1 Sol at medium reasoning in your own words. Credit the substantial generated implementation, comments, and documentation; describe what you personally checked or changed. The app's server-side OpenAI model is a separate runtime configuration.]
+
+### Local setup and secrets
+
+[Describe the local frontend/backend setup below in your own words. Explain that the OpenAI key stays in backend environment variables, and personal notebook notes stay in this browser.]
 
 ## AI-generated technical documentation
 
-This section was prepared with Codex and must stay labeled if retained.
+Everything in this section was written by Codex. It is supporting documentation, not student-authored prose. The detailed prompt log is a separate file next to this README.
 
-### What the software does
+### What the app does
 
-The existing Bible explorer retrieves passages and cross-references using a Python/Flask API and visualizes them with Cytoscape.js. P2 adds a comparison workflow, an exact-reference overlap list, named study collections, personal notes, and Markdown export. It also corrects verse-range retrieval, relationship styles, empty results, and search error handling.
+Scripture Graph searches Bible verses, people, topics, and questions, then renders retrieved passages and relationships as an interactive network. Comparing two searches produces evidence-linked similarities, differences in emphasis, and study questions. Blue and purple identify the two selections. Yellow dashed links connect shared themes, even when passage references differ. Those thematic links are AI interpretations or labeled word-match previews, rather than published cross-references.
 
-### Use the app
+The P2 notebook stores folders, passages, personal notes, and study outlines in browser storage. Users can create, rename, search, and export folders; deleted folders move to Recently deleted and can be restored. Save reviews show the exact item and destination before saving. Compared with HW4, P2 adds a distinct comparison-to-study workflow rather than only improving a single search.
 
-1. Enter a Bible verse, person, topic, or natural-language question in the first search field.
-2. Optionally enter a second search. Blue represents the first result, purple the second, and gold a shared passage.
-3. Select a node or a shared-reference button to read Scripture and connection details. Use node-type filters or the shared-passages filter to narrow the view.
-4. Save a verse to a collection. Open **Study notebook** to create collections, add notes, remove saved passages, or export Markdown.
-5. **Fit graph** fits visible nodes. **Reset view** restores all filters and shows the search center. Cancel or retry slow/failed searches.
+### Use the deployed app
 
-Comparison counts measure exact displayed reference matches among the returned passages, not all relevant verses in the Bible. Different ranges count separately. Topic and subtheme nodes are kept separate even when the backend gives them the same IDs.
+1. Enter a reference such as Romans 8:28, a person such as Jesus, or a topic such as fear. Enter a second search to compare selections.
+2. Choose a yellow link or its title in the left panel. The inspector explains the shared idea and each passage's contribution. Open the verse readings when needed.
+3. Expand a similarity, difference, overview, or study question when you want more detail. Node filters and Fit graph help explore the network.
+4. For one passage, select its node and choose Review & save passage. For a comparison, choose Review & save study. Check the contents and folder, then confirm.
+5. Open My notebook in the left sidebar. Select a folder, expand a saved passage, and type notes; notes save automatically. Export folder downloads the entire folder, including notes and outline, even if its visible list is filtered.
+6. Delete folder moves it into Recently deleted. Restore it from the folder sidebar. Closing or canceling a save review does not save the item.
 
-### Architecture and code map
-
-- `index.html`: page structure, comparison controls, inspector, notebook dialog.
-- `styles.css`: original desktop design plus P2 controls and notebook styling.
-- `graph-utils.js`: validates graph responses, merges results without ID collisions, and formats notebook exports.
-- `app.js`: requests results, renders the graph, handles filters and selection, and stores collections.
-- Backend `app.py`: Flask routes and public error responses.
-- Backend `services.py`: builds retrieved graphs and invokes AI interpretation/explanation.
-- Backend `bible_data.py`: retrieves Bible data, resolves verse ranges, and performs lexical search.
-- Backend `ai_service.py`: existing server-side OpenAI calls; its model is configured with `OPENAI_MODEL`.
-
-Comparison happens in the frontend, using two requests to the existing `/explore` route. The two search requests run together, and the backend batches independent passage retrieval in parallel. A 150-second overall timeout, cancellation, and a request number prevent indefinite loading and stale responses. The browser caches up to 20 successful searches per session.
+Counts describe retrieved selections, not exhaustive Bible-wide theological claims. A bare Jesus search resolves to Jesus Christ; Jesus called Justus can be searched explicitly. Metadata references lacking text in the selected translation are excluded.
 
 ### Run locally
 
-Clone the frontend and backend repositories separately:
+Clone the two repositories and install backend dependencies:
 
 ```sh
 git clone https://github.com/kadiekeslar/kadiekeslar.github.io.git
 git clone https://github.com/kadiekeslar/scripture-graph-backend.git
-```
-
-From the backend repository:
-
-```sh
+cd scripture-graph-backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+```
+
+Create an untracked backend `.env` containing `OPENAI_API_KEY` and, optionally, `OPENAI_MODEL` set to a model available to your account. Do not paste real keys into documentation or source files. Then run:
+
+```sh
 python app.py
 ```
 
-Before starting Flask, configure `OPENAI_API_KEY` and `OPENAI_MODEL` in a local `.env` file. Use a model available to your API account; keep the same working Render model configuration unless deliberately changing it. Never commit `.env`.
-
-From the frontend repository:
+In another terminal, from the frontend repository:
 
 ```sh
 python3 -m http.server 8000
 ```
 
-Open `http://localhost:8000/scripture-graph/?api=http://127.0.0.1:5000` to use your local backend. Without that query parameter, the frontend uses the deployed Render backend. Only localhost/127.0.0.1 HTTP overrides are accepted.
+Open `http://localhost:8000/scripture-graph/?api=http://127.0.0.1:5000`. Without the local API override, the frontend uses the deployed Render backend. Retrieve-only paths can work without a local OpenAI key; AI comparison and free-form interpretation require one.
 
-### Secrets, privacy, and limitations
+### How the code fits together
 
-The OpenAI key stays on the backend in environment variables, never in the browser code. Keep `.env` ignored and configure secrets in Render's environment settings. Public errors no longer expose raw provider exception details.
+| File | Responsibility |
+|---|---|
+| `index.html` | Search controls, graph area, inspector, notebook, save review |
+| `styles.css` | Desktop layout, colors, collapsed findings, folder workspace |
+| `app.js` | Fetch requests, Cytoscape interaction, notebook storage and save/delete events |
+| `graph-utils.js` | Response validation, exact-reference graph merging, text previews, study/export data |
+| Backend `app.py` | Flask endpoints and safe public errors |
+| Backend `services.py` | Route a query into verse/entity/topic retrieval and optional explanations |
+| Backend `bible_data.py` | Public Bible API, person matching, complete ranges, lexical verse search |
+| Backend `comparison.py` | Evidence-grounded AI comparison, citation validation, one validation retry |
+| Backend `ai_service.py` | Server-side OpenAI calls; model selected by `OPENAI_MODEL` |
+| Backend `result_cache.py` | Bounded ten-minute cache and sharing work between identical requests |
 
-Queries are sent to the backend and may be sent to OpenAI for interpretation. Notebook entries and personal notes remain in this browser's localStorage and are not sent to the backend. They do not sync across devices; clearing browser data removes them. Export backups. If storage is unavailable, the app retains session changes and displays a warning.
+Search flow: browser → `/explore?fast=1` → public Bible data → graph JSON. Two comparison searches run together. The graph renders before optional `/compare` or `/explain` finishes. Request numbers stop older requests replacing a newer search; cancel and timeouts stop indefinite waiting. Cached results and parallel data retrieval reduce repeated work. Server sleep/restart clears its in-memory cache.
 
-This version retains the HW4 desktop layout. Small screens are not supported well; mobile improvements were explicitly excluded from this implementation. This does not automatically qualify as a genuinely desktop-only project under the course rubric.
+Notebook flow: save review → chosen folder → `localStorage` → notebook display or Markdown export. Version-1 saved studies remain compatible. Recently deleted stays in the same browser storage; clearing browser data also removes it.
 
-AI-generated explanations and topic categories are labeled and should be checked against the retrieved Scripture. Entity enrichment is chapter context, not proof that the selected verse mentions an entity. Topic search is lexical retrieval guided by AI, not exhaustive semantic search.
+### Secrets and data handling
 
-### Sources and attribution
+OpenAI credentials stay in the Flask server's environment or ignored `.env`, never in browser JavaScript. Render holds deployed secrets. Requests can send search terms and retrieved passages to OpenAI for interpretation. Personal notebook notes are not sent to the backend and do not sync across browsers/devices. Export a folder to back it up. Public error messages avoid exposing raw provider errors.
 
-- [Bible data API](https://bible.helloao.org/) supplies Berean Standard Bible text, Open Bible cross-references, and Theographic metadata through the existing backend.
-- [Cytoscape.js](https://js.cytoscape.org/) renders the interactive network.
-- [Flask](https://flask.palletsprojects.com/) serves the backend API.
-- [OpenAI API](https://platform.openai.com/docs/) supplies server-side query interpretation and explanations.
-- Codex generated the P2 replacement implementation and technical notes. The student must separately identify their own manual changes and record actual development tools/models in `prompt_log.md`.
+### Testing and limitations
 
-### Project links
+Run `node --test scripture-graph/tests/graph.test.cjs` from the frontend repository. Run `python -m unittest discover -s tests` from the backend repository with dependencies installed. These checks cover graph identity, citation validation, export, range/corpus parsing, query routing, API errors, and cache coalescing. Browser checks additionally exercised saving, notes after refresh, folder renaming/search/export, deleted-folder restoration, and connection selection.
 
-- [Live project](https://kadiekeslar.github.io/scripture-graph/)
-- [Frontend source](https://github.com/kadiekeslar/kadiekeslar.github.io/tree/main/scripture-graph)
-- [Backend source](https://github.com/kadiekeslar/scripture-graph-backend)
+The app retains the desktop layout; mobile work was explicitly excluded. This is a remaining rubric limitation, not an automatic exemption. AI explanations compare a limited retrieved selection and need context checks. Free hosting wake-up and external API delays can still affect a first search.
 
-GitHub Pages hosts the frontend and Render hosts the backend. A new commit may take a few minutes to appear in the public deployment; verify that the page says Compare & Study and the backend version says compare-study-p2.
+### AI and source attribution
 
-### Explained comparisons and faster search (P2 continuation)
+Development used OpenAI Codex with **GPT-6.1 Sol, medium reasoning**, as reported by the student. Codex generated or substantially modified most of the new P2 frontend/backend, tests, comments, and technical documentation. Student-requested features, iterative feedback, and independently written code are distinct contributions; see the prompt log.
 
-Comparisons now include an overview, thematic similarities, and side-by-side differences in emphasis, each with clickable evidence from both retrieved selections. Gold dashed links connect supporting passages even when they have different references. These thematic links are labeled separately from published cross-references. Highlighting evidence focuses the graph on the cited passages.
+The application's OpenAI model is configured separately using `OPENAI_MODEL`; the code's default is `gpt-5.6-luna`. The deployed environment value has not been inspected. Do not confuse that runtime setting with the Codex development model.
 
-**Save study outline** creates a notebook collection with the findings, supporting Scripture, and study questions. Its Markdown export includes the explanation and questions alongside your notes. Existing saved collections remain compatible.
-
-A text-based preview appears immediately and is replaced by AI-assisted interpretation when available. Word-family matches are explicitly labeled as a preview: matching language does not guarantee the same theological meaning. Differences concern the selected passages, not exhaustive claims about the entire Bible. The backend verifies every comparison citation belongs to the respective retrieved selection; verification of citation membership does not automatically prove the interpretation is correct.
-
-Search optimizations include parallel passage/entity retrieval, ten-minute process-local result caching, coalescing duplicate concurrent requests, cached query interpretation, and graph-first/background-explanation delivery. Eight common topics (fear, hope, faith, love, anxiety, forgiveness, suffering, prayer) use transparent word-family retrieval without an initial AI classification call. More complex questions still require AI classification. The complete translation reader now handles the API's nested chapter format correctly; a lock prevents duplicate first-time full-Bible downloads.
-
-Endpoints: `GET /explore?fast=1&q=...` returns retrieval before final AI explanation; `GET /explain?q=...` enriches that retrieved graph; `POST /compare` accepts JSON `{"left":"fear","right":"hope"}` and returns evidence-checked findings. The frontend wakes `/health` when opened. Caches are in memory and reset on service restart. Render free-tier cold starts can still add delay; these code changes do not make a sleeping service permanently available.
-
-Run frontend checks with `node --test scripture-graph/tests/graph.test.cjs` from the frontend repo. Run backend checks with `python -m unittest discover -s tests` from the backend repo, with its dependencies installed.
-
-### Notebook folders
-
-Open **My notebook** in the left sidebar. Choose a folder to view its saved passages and study outline, create or rename folders, search saved text/notes, and export the entire folder as Markdown. Passage notes save automatically. The notebook remembers the last selected folder and keeps existing stored studies. Storage remains local to this browser and device.
-
-Choose **Delete folder** in the open folder to move it into **Recently deleted**. Restore it from the folder sidebar. Saving a passage or study now opens a review with its contents and destination; choose a folder or create one before confirming. Existing passage notes survive duplicate saves.
+- [Free Use Bible API](https://bible.helloao.org/) supplies Berean Standard Bible text, Open Bible cross-references, and Theographic metadata.
+- [Cytoscape.js](https://js.cytoscape.org/) renders the graph.
+- [Flask](https://flask.palletsprojects.com/) serves JSON endpoints.
+- [OpenAI](https://openai.com/) provides Codex and the runtime AI API.
+- Existing HW4 code was reused as the foundation; P2's new work is logged separately.

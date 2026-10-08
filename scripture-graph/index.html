@@ -1,89 +1,306 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Scripture Graph · Compare & Study</title>
-  <link rel="stylesheet" href="styles.css?v=notebook-save-delete" />
-  <script defer src="https://unpkg.com/cytoscape@3.31.2/dist/cytoscape.min.js"></script>
-  <script defer src="graph-utils.js?v=notebook-save-delete"></script>
-  <script defer src="app.js?v=notebook-save-delete"></script>
-</head>
-<body>
-  <div class="app-shell">
-    <header class="topbar">
-      <div class="brand"><span class="brand-mark">SG</span><div><div class="brand-title">SCRIPTURE GRAPH</div><div class="brand-subtitle">COMPARE & STUDY</div></div></div>
-      <form id="searchForm" class="search-wrap">
-        <label class="sr-only" for="searchInput">First search</label><input id="searchInput" type="search" maxlength="300" placeholder="Verse, person, topic, or question…" required />
-        <label class="sr-only" for="compareInput">Second search, optional</label><input id="compareInput" type="search" maxlength="300" placeholder="Compare with… (optional)" />
-        <button id="searchButton" type="submit">EXPLORE</button>
-      </form>
-      <div class="system-status"><span class="status-dot"></span><span id="apiStatus" role="status">READY</span></div>
-    </header>
-    <aside class="left-panel">
-      <button id="notebookHomeButton" class="notebook-home"><span>▣ MY NOTEBOOK</span><small id="notebookHomeCount">Your saved folders &amp; passages</small></button>
-      <div id="comparisonPanel" class="hidden">
-        <div class="panel-heading">CONNECTIONS BETWEEN SEARCHES</div>
-        <div id="comparisonStats"></div><div id="thematicStats" role="status"></div><div id="thematicList"></div>
-        <p class="help-text">Yellow lines connect shared ideas.</p>
-      </div>
-      <div class="panel-heading">FILTER / NODE TYPE</div><div id="filterList"></div>
-      <div class="legend"><div class="panel-heading">RELATIONSHIPS</div><div><span class="line-key solid"></span>CROSS REFERENCE</div><div><span class="line-key dashed"></span>CONTEXT / REFERENCE</div><div><span class="line-key dotted"></span>TOPIC / SUBTHEME</div><div><span class="line-key thematic"></span>THEMATIC LINK</div></div>
-      <div class="stats"><div class="panel-heading">NETWORK</div><div class="stat"><span>NODES</span><strong id="nodeCount">0</strong></div><div class="stat"><span>EDGES</span><strong id="edgeCount">0</strong></div><div class="stat"><span>MODE</span><strong id="queryType">—</strong></div></div>
-      <div class="source-block"><div class="panel-heading">DATA SOURCES</div><div id="sourceList">Search to load sources.</div><p class="help-text">Verse text comes from the Berean Standard Bible. Topic categories and explanations may be AI-generated. Chapter context does not mean an entity appears in the selected verse.</p></div>
-    </aside>
-    <main class="graph-stage">
-      <section id="comparisonInsights" class="comparison-insights hidden" aria-label="Comparison findings">
-        <div class="insights-header"><div><div class="panel-heading">READ THE CONNECTIONS</div><h2>Similarities & differences</h2></div><div><button id="retryComparisonButton" class="hidden">Retry comparison</button><button id="saveOutlineButton">Review &amp; save study</button><button id="toggleInsightsButton" aria-expanded="true">Collapse</button></div></div>
-        <div id="insightsBody"><p id="insightsStatus" class="help-text" role="status"></p><details class="comparison-overview"><summary>Read the overview</summary><p id="comparisonOverview"></p></details><div class="insights-columns"><section><h3>Similarities</h3><div id="similarityCards"></div></section><section><h3>Differences in emphasis</h3><div id="differenceCards"></div></section></div><details class="study-questions"><summary>Questions for your study</summary><ol id="studyQuestions"></ol></details></div>
-      </section>
-
-      <div class="graph-controls"><button id="fitButton">Fit graph</button><button id="resetButton">Reset view</button><button id="notebookButton">Study notebook</button><label id="themeLinksControl" class="hidden"><input id="themeLinks" type="checkbox" checked /> Thematic links</label></div>
-      <div class="graph-canvas"><div class="graph-label">NETWORK / DRAG • ZOOM • SELECT</div>
-      <div id="cy" aria-label="Interactive Scripture graph"></div>
-      <div id="emptyState" class="empty-stage"><div class="empty-kicker">SEARCH · COMPARE · COLLECT</div><h1>Follow a connection.</h1><p>Discover shared ideas, see different emphases, and turn connections into a study.</p><div class="examples"><button data-query="fear" data-compare="hope">fear ↔ hope</button><button data-query="Romans 8:28" data-compare="James 1:12">compare verses</button><button data-query="Moses">Moses</button></div></div>
-      <div id="loadingState" class="loading-stage hidden"><div class="loader"></div><div id="loadingMessage" role="status">RETRIEVING + ORGANIZING SCRIPTURE</div><button id="cancelButton">Cancel search</button></div>
-      <div id="errorBanner" class="error-banner hidden" role="alert"><span id="errorMessage"></span><button id="retryButton">Retry</button></div>
-      </div>
-    </main>
-    <aside class="inspector">
-      <div class="panel-heading">INSPECTOR</div><div class="inspector-type" id="detailType">NO SELECTION</div><h1 id="detailLabel">Scripture Graph</h1><p class="detail-summary" id="detailSummary">Search once to explore, or enter a second search to compare.</p><details id="detailMore" class="hidden"><summary>Read more</summary><p id="detailFullSummary"></p></details>
-      <blockquote id="verseText" class="verse-text hidden"></blockquote>
-      <div id="saveControls" class="hidden"><strong id="savePassageTitle"></strong><label for="saveCollection">Destination folder</label><select id="saveCollection"></select><p id="saveDestination" class="help-text"></p><button id="saveVerseButton">Review &amp; save passage</button><p id="saveMessage" role="status"></p></div>
-      <div id="detailMeta" class="detail-meta"></div><div class="connections-header"><span id="inspectorConnectionsTitle">CONNECTIONS</span><span id="connectionCount">—</span></div><div id="connectionList"><div class="empty-state">No node selected.</div></div>
-    </aside>
-    <footer class="footerbar"><span>P2 / COMPARE & STUDY</span><span id="footerMessage">READY</span></footer>
-  </div>
-  <dialog id="notebookDialog" aria-labelledby="notebookTitle">
-    <div class="notebook-header"><div><div class="panel-heading">YOUR SAVED STUDIES</div><h2 id="notebookTitle">My notebook</h2></div><button id="closeNotebook">Close notebook</button></div>
-    <p class="notebook-storage">Stored in this browser on this device. Export a folder to keep a backup.</p>
-    <p id="storageMessage" role="status"></p>
-    <div class="notebook-layout">
-      <aside class="notebook-folders" aria-label="Notebook folders">
-        <div class="panel-heading">FOLDERS <span id="folderCount"></span></div>
-        <nav id="folderList" aria-label="Choose a notebook folder"></nav>
-        <form id="collectionForm"><label for="collectionName">Create a folder</label><input id="collectionName" placeholder="Folder name" maxlength="80" required /><button>Create folder</button></form>
-        <details id="deletedFolders"><summary id="deletedFoldersTitle">Recently deleted (0)</summary><div id="deletedFolderList"></div></details>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scripture Graph · Compare & Study</title>
+    <link rel="stylesheet" href="styles.css?v=notebook-save-delete" />
+    <script
+      defer
+      src="https://unpkg.com/cytoscape@3.31.2/dist/cytoscape.min.js"
+    ></script>
+    <script defer src="graph-utils.js?v=notebook-save-delete"></script>
+    <script defer src="app.js?v=notebook-save-delete"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">SG</span>
+          <div>
+            <div class="brand-title">SCRIPTURE GRAPH</div>
+            <div class="brand-subtitle">COMPARE & STUDY</div>
+          </div>
+        </div>
+        <form id="searchForm" class="search-wrap">
+          <label class="sr-only" for="searchInput">First search</label
+          ><input
+            id="searchInput"
+            type="search"
+            maxlength="300"
+            placeholder="Verse, person, topic, or question…"
+            required
+          />
+          <label class="sr-only" for="compareInput"
+            >Second search, optional</label
+          ><input
+            id="compareInput"
+            type="search"
+            maxlength="300"
+            placeholder="Compare with… (optional)"
+          />
+          <button id="searchButton" type="submit">EXPLORE</button>
+        </form>
+        <div class="system-status">
+          <span class="status-dot"></span
+          ><span id="apiStatus" role="status">READY</span>
+        </div>
+      </header>
+      <aside class="left-panel">
+        <button id="notebookHomeButton" class="notebook-home">
+          <span>▣ MY NOTEBOOK</span
+          ><small id="notebookHomeCount"
+            >Your saved folders &amp; passages</small
+          >
+        </button>
+        <div id="comparisonPanel" class="hidden">
+          <div class="panel-heading">CONNECTIONS BETWEEN SEARCHES</div>
+          <div id="comparisonStats"></div>
+          <div id="thematicStats" role="status"></div>
+          <div id="thematicList"></div>
+          <p class="help-text">Yellow lines connect shared ideas.</p>
+        </div>
+        <div class="panel-heading">FILTER / NODE TYPE</div>
+        <div id="filterList"></div>
+        <div class="legend">
+          <div class="panel-heading">RELATIONSHIPS</div>
+          <div><span class="line-key solid"></span>CROSS REFERENCE</div>
+          <div><span class="line-key dashed"></span>CONTEXT / REFERENCE</div>
+          <div><span class="line-key dotted"></span>TOPIC / SUBTHEME</div>
+          <div><span class="line-key thematic"></span>THEMATIC LINK</div>
+        </div>
+        <div class="stats">
+          <div class="panel-heading">NETWORK</div>
+          <div class="stat">
+            <span>NODES</span><strong id="nodeCount">0</strong>
+          </div>
+          <div class="stat">
+            <span>EDGES</span><strong id="edgeCount">0</strong>
+          </div>
+          <div class="stat">
+            <span>MODE</span><strong id="queryType">—</strong>
+          </div>
+        </div>
+        <div class="source-block">
+          <div class="panel-heading">DATA SOURCES</div>
+          <div id="sourceList">Search to load sources.</div>
+          <p class="help-text">
+            Verse text comes from the Berean Standard Bible. Topic categories
+            and explanations may be AI-generated. Chapter context does not mean
+            an entity appears in the selected verse.
+          </p>
+        </div>
       </aside>
-      <section class="notebook-content" aria-label="Open folder">
-        <div class="notebook-breadcrumb">My notebook / <span id="folderBreadcrumb"></span></div>
-        <div class="notebook-folder-header"><div><h3 id="folderTitle"></h3><p id="folderSummary"></p></div><div><button id="renameFolderButton">Rename</button><button id="deleteFolderButton">Delete folder</button><button id="exportButton">Export folder</button></div></div>
-        <section id="deleteFolderConfirm" class="hidden delete-folder-confirm"><h4>Delete this folder?</h4><p id="deleteFolderSummary"></p><button id="confirmDeleteFolder">Move to Recently deleted</button><button id="cancelDeleteFolder">Cancel</button></section>
-        <form id="renameFolderForm" class="hidden"><label for="renameFolderName">Folder name</label><input id="renameFolderName" maxlength="80" required /><button>Save name</button><button id="cancelRenameButton" type="button">Cancel</button></form>
-        <label class="sr-only" for="notebookSearch">Search this folder</label><input id="notebookSearch" type="search" placeholder="Find a passage or note in this folder" />
-        <div id="notebookEntries"></div>
-      </section>
+      <main class="graph-stage">
+        <section
+          id="comparisonInsights"
+          class="comparison-insights hidden"
+          aria-label="Comparison findings"
+        >
+          <div class="insights-header">
+            <div>
+              <div class="panel-heading">READ THE CONNECTIONS</div>
+              <h2>Similarities & differences</h2>
+            </div>
+            <div>
+              <button id="retryComparisonButton" class="hidden">
+                Retry comparison</button
+              ><button id="saveOutlineButton">Review &amp; save study</button
+              ><button id="toggleInsightsButton" aria-expanded="true">
+                Collapse
+              </button>
+            </div>
+          </div>
+          <div id="insightsBody">
+            <p id="insightsStatus" class="help-text" role="status"></p>
+            <details class="comparison-overview">
+              <summary>Read the overview</summary>
+              <p id="comparisonOverview"></p>
+            </details>
+            <div class="insights-columns">
+              <section>
+                <h3>Similarities</h3>
+                <div id="similarityCards"></div>
+              </section>
+              <section>
+                <h3>Differences in emphasis</h3>
+                <div id="differenceCards"></div>
+              </section>
+            </div>
+            <details class="study-questions">
+              <summary>Questions for your study</summary>
+              <ol id="studyQuestions"></ol>
+            </details>
+          </div>
+        </section>
+
+        <div class="graph-controls">
+          <button id="fitButton">Fit graph</button
+          ><button id="resetButton">Reset view</button
+          ><button id="notebookButton">Study notebook</button
+          ><label id="themeLinksControl" class="hidden"
+            ><input id="themeLinks" type="checkbox" checked /> Thematic
+            links</label
+          >
+        </div>
+        <div class="graph-canvas">
+          <div class="graph-label">NETWORK / DRAG • ZOOM • SELECT</div>
+          <div id="cy" aria-label="Interactive Scripture graph"></div>
+          <div id="emptyState" class="empty-stage">
+            <div class="empty-kicker">SEARCH · COMPARE · COLLECT</div>
+            <h1>Follow a connection.</h1>
+            <p>
+              Discover shared ideas, see different emphases, and turn
+              connections into a study.
+            </p>
+            <div class="examples">
+              <button data-query="fear" data-compare="hope">fear ↔ hope</button
+              ><button data-query="Romans 8:28" data-compare="James 1:12">
+                compare verses</button
+              ><button data-query="Moses">Moses</button>
+            </div>
+          </div>
+          <div id="loadingState" class="loading-stage hidden">
+            <div class="loader"></div>
+            <div id="loadingMessage" role="status">
+              RETRIEVING + ORGANIZING SCRIPTURE
+            </div>
+            <button id="cancelButton">Cancel search</button>
+          </div>
+          <div id="errorBanner" class="error-banner hidden" role="alert">
+            <span id="errorMessage"></span
+            ><button id="retryButton">Retry</button>
+          </div>
+        </div>
+      </main>
+      <aside class="inspector">
+        <div class="panel-heading">INSPECTOR</div>
+        <div class="inspector-type" id="detailType">NO SELECTION</div>
+        <h1 id="detailLabel">Scripture Graph</h1>
+        <p class="detail-summary" id="detailSummary">
+          Search once to explore, or enter a second search to compare.
+        </p>
+        <details id="detailMore" class="hidden">
+          <summary>Read more</summary>
+          <p id="detailFullSummary"></p>
+        </details>
+        <blockquote id="verseText" class="verse-text hidden"></blockquote>
+        <div id="saveControls" class="hidden">
+          <strong id="savePassageTitle"></strong
+          ><label for="saveCollection">Destination folder</label
+          ><select id="saveCollection"></select>
+          <p id="saveDestination" class="help-text"></p>
+          <button id="saveVerseButton">Review &amp; save passage</button>
+          <p id="saveMessage" role="status"></p>
+        </div>
+        <div id="detailMeta" class="detail-meta"></div>
+        <div class="connections-header">
+          <span id="inspectorConnectionsTitle">CONNECTIONS</span
+          ><span id="connectionCount">—</span>
+        </div>
+        <div id="connectionList">
+          <div class="empty-state">No node selected.</div>
+        </div>
+      </aside>
+      <footer class="footerbar">
+        <span>P2 / COMPARE & STUDY</span><span id="footerMessage">READY</span>
+      </footer>
     </div>
-  </dialog>
-  <dialog id="saveReviewDialog" aria-labelledby="saveReviewTitle">
-    <form id="saveReviewForm">
-      <div class="notebook-header"><div><div class="panel-heading">SAVE TO MY NOTEBOOK</div><h2 id="saveReviewTitle">Review your save</h2></div><button id="cancelSaveReview" type="button">Cancel</button></div>
-      <h3 id="saveReviewItem"></h3><p id="saveReviewContents"></p><blockquote id="saveReviewPreview"></blockquote>
-      <label for="saveReviewFolder">Choose a destination folder</label><select id="saveReviewFolder"></select>
-      <div id="saveNewFolderFields" class="hidden"><label for="saveNewFolderName">New folder name</label><input id="saveNewFolderName" maxlength="80" /></div>
-      <p id="saveReviewDestination" class="save-review-destination"></p><p id="saveReviewNotice" class="help-text"></p><p id="saveReviewError" role="alert"></p>
-      <button id="confirmSaveReview" type="submit">Save to folder</button>
-    </form>
-  </dialog>
-</body>
+    <dialog id="notebookDialog" aria-labelledby="notebookTitle">
+      <div class="notebook-header">
+        <div>
+          <div class="panel-heading">YOUR SAVED STUDIES</div>
+          <h2 id="notebookTitle">My notebook</h2>
+        </div>
+        <button id="closeNotebook">Close notebook</button>
+      </div>
+      <p class="notebook-storage">
+        Stored in this browser on this device. Export a folder to keep a backup.
+      </p>
+      <p id="storageMessage" role="status"></p>
+      <div class="notebook-layout">
+        <aside class="notebook-folders" aria-label="Notebook folders">
+          <div class="panel-heading">
+            FOLDERS <span id="folderCount"></span>
+          </div>
+          <nav id="folderList" aria-label="Choose a notebook folder"></nav>
+          <form id="collectionForm">
+            <label for="collectionName">Create a folder</label
+            ><input
+              id="collectionName"
+              placeholder="Folder name"
+              maxlength="80"
+              required
+            /><button>Create folder</button>
+          </form>
+          <details id="deletedFolders">
+            <summary id="deletedFoldersTitle">Recently deleted (0)</summary>
+            <div id="deletedFolderList"></div>
+          </details>
+        </aside>
+        <section class="notebook-content" aria-label="Open folder">
+          <div class="notebook-breadcrumb">
+            My notebook / <span id="folderBreadcrumb"></span>
+          </div>
+          <div class="notebook-folder-header">
+            <div>
+              <h3 id="folderTitle"></h3>
+              <p id="folderSummary"></p>
+            </div>
+            <div>
+              <button id="renameFolderButton">Rename</button
+              ><button id="deleteFolderButton">Delete folder</button
+              ><button id="exportButton">Export folder</button>
+            </div>
+          </div>
+          <section
+            id="deleteFolderConfirm"
+            class="hidden delete-folder-confirm"
+          >
+            <h4>Delete this folder?</h4>
+            <p id="deleteFolderSummary"></p>
+            <button id="confirmDeleteFolder">Move to Recently deleted</button
+            ><button id="cancelDeleteFolder">Cancel</button>
+          </section>
+          <form id="renameFolderForm" class="hidden">
+            <label for="renameFolderName">Folder name</label
+            ><input id="renameFolderName" maxlength="80" required /><button>
+              Save name</button
+            ><button id="cancelRenameButton" type="button">Cancel</button>
+          </form>
+          <label class="sr-only" for="notebookSearch">Search this folder</label
+          ><input
+            id="notebookSearch"
+            type="search"
+            placeholder="Find a passage or note in this folder"
+          />
+          <div id="notebookEntries"></div>
+        </section>
+      </div>
+    </dialog>
+    <dialog id="saveReviewDialog" aria-labelledby="saveReviewTitle">
+      <form id="saveReviewForm">
+        <div class="notebook-header">
+          <div>
+            <div class="panel-heading">SAVE TO MY NOTEBOOK</div>
+            <h2 id="saveReviewTitle">Review your save</h2>
+          </div>
+          <button id="cancelSaveReview" type="button">Cancel</button>
+        </div>
+        <h3 id="saveReviewItem"></h3>
+        <p id="saveReviewContents"></p>
+        <blockquote id="saveReviewPreview"></blockquote>
+        <label for="saveReviewFolder">Choose a destination folder</label
+        ><select id="saveReviewFolder"></select>
+        <div id="saveNewFolderFields" class="hidden">
+          <label for="saveNewFolderName">New folder name</label
+          ><input id="saveNewFolderName" maxlength="80" />
+        </div>
+        <p id="saveReviewDestination" class="save-review-destination"></p>
+        <p id="saveReviewNotice" class="help-text"></p>
+        <p id="saveReviewError" role="alert"></p>
+        <button id="confirmSaveReview" type="submit">Save to folder</button>
+      </form>
+    </dialog>
+  </body>
 </html>

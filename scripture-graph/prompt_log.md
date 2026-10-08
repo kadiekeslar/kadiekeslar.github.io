@@ -1,102 +1,127 @@
-# P2 prompt log
+# Project 2 prompt log — Scripture Graph
 
-This file records the available conversation honestly. It is not evidence of eight hours of student work by itself. Keep the original HW4 log in the backend repository; do not count that earlier work as new P2 work.
+## Scope and provenance
 
-## Tools and jobs
+This is a P2 record assembled by Codex from this conversation. It separates the reused HW4 foundation from new P2 work. Complete prompts below are copied verbatim; any partial quotation is explicitly labeled as an excerpt. Process notes are AI-written factual summaries, not additional prompts.
 
-- Codex: inspected the HW4 frontend/backend and project rubric, proposed P2 scope, generated replacement code, and ran verification. The exact selected Codex model label should be copied from the app; it was not independently recorded in this log.
-- The deployed application's OpenAI API model is configured separately with `OPENAI_MODEL`. That runtime model is not necessarily the model used to develop the project.
-- Browser testing: exercised the real deployed HW4 verse search and the local P2 frontend.
-- Node/Python checks: tested graph identity/overlap, export content, verse ranges, and lexical search behavior.
+## Which tool for which job
 
-Student addition needed: explain why you selected each actual model/tool for planning, coding, or debugging. Record any other tools used.
+- **OpenAI Codex, GPT-6.1 Sol, medium reasoning:** the student identified this model in the conversation. Used for rubric review and planning, repository inspection, code generation, iterative fixes, tests, deployment checks, and documentation. Keeping one agent with the repository context made changes across Flask, JavaScript, and the notebook easier to coordinate. No separate brainstorming/debugging model is evidenced here.
+- **Computer-use browser tools:** exercised the rendered interface and real network results, including connection clicks, counts, folder navigation, notes after refresh, exports, and restore. These reveal interface problems that a code-only review misses.
+- **Node's test runner and Python unittest:** deterministic checks for graph identity, evidence membership, ranges, corpus format, safe errors, and cache behavior. Chosen to check behavior independently of changing AI responses.
+- **Git and HTTPS requests:** inspected the named public repositories, kept a commit history, and checked actual deployed endpoints rather than assuming a push worked. Only the two project repositories were accessed.
+- **Prettier and Black:** formatters for readable JavaScript/HTML/CSS and Python. They change presentation, not intended behavior.
+- **Runtime OpenAI API:** used by the app for interpreting free-form searches and comparing/explaining retrieved Scripture. This model is selected by `OPENAI_MODEL`, separately from Codex. The source default is `gpt-5.6-luna`; the actual deployed setting was not inspected. Bible retrieval uses public Bible data, not invented AI quotations.
 
-## Important prompts, verbatim
+## Development process and actual prompts
 
-### Review request (verbatim concluding sentence from the original request)
+### 1. Initial P2 review — verbatim excerpt
 
 > you can find it here in scripture graph and the frontend and backend code is all there as well, let me know what i should add to it to make it full credit for p2
 
-The request supplied the P2 assignment prompt, the portfolio repository, and the backend repository. Codex reviewed those sources and recommended comparison plus a persistent notebook.
+**Outcome:** Reviewed the provided rubric and public repositories; proposed comparison and a persistent notebook as the P2 transformation.
 
-### Implementation request (full prompt)
+### 2. Implementation and scope
 
 > okay i dont care about the mobile part but do everything else and tell me what code to change and where
 
-Codex generated the local replacement bundle. The authorized scope excludes mobile layout changes. The live repositories were not changed by this step.
+**Outcome:** Built the first replacement bundle; mobile was excluded by user choice.
 
-## What changed during this session
-
-AI-generated changes: comparison and overlap logic, study collections/notes/export, request cancellation/deadline/retry, graph controls, corrected legend, full cross-reference range text, word-boundary search, public error cleanup, entity-lookup resilience, and no-results detection.
-
-Student-written or substantially modified code: **not yet recorded**. Add exact files/functions and your actual changes after you make them. Do not describe copying AI code as manually authoring it.
-
-## One place AI got it wrong
-
-During browser verification, Codex used a numeric accessibility element index to click the shared-only filter, but the returned state showed the notebook dialog open instead. That made the attempted action unreliable. Codex corrected the testing approach by targeting the checkbox by its explicit role and name, then checked the resulting page state: the shared-only view reported three visible nodes and Reset view restored 29. This is a real AI/tool-use mistake from this session, not an invented development story. The student should explain how they evaluated AI work and add their own debugging observations as they continue.
-
-A separate code bug discovered during review was that the existing topic graph's no-results check counted subtheme nodes rather than retrieved verse nodes. The replacement checks for at least one verse. Its original AI provenance has not been independently verified.
-
-## Actual work log — fill in as you work
-
-| Date / session | Task | Actual minutes | My code changes / verification | Commit |
-|---|---|---:|---|---|
-| | | | | |
-
-Append substantial later prompts verbatim, decisions, debugging outcomes, deployment checks, and manual edits. Record actual elapsed focused work; no hours or extra prompts have been invented here.
-
-## Applying the files to GitHub
-
-Additional user prompt, verbatim:
+### 3. Apply the edits
 
 > are you able to edit the files for me
 
-Codex applied the replacement frontend/backend files to repository copies, updated the portfolio description, checked that both repositories were current with main, reran the 15 automated checks, and prepared commits for the authorized updates. This does not count as student-written code or establish eight hours of student work. Deployment verification follows the push.
+**Outcome:** Applied changes to the two named repositories, tested, committed, pushed, and verified deployment.
 
-## Explained comparison and speed continuation
-
-User prompts, verbatim:
+### 4. Compare meaning
 
 > instead of only crossing reference if they share an exact passage, make it more clear on the similarites and difeerences not just make the user read through all of them and add anything to the app that you thing would be super cool and useful
 
+**Outcome:** Added cited thematic similarities, differences in emphasis, distinct yellow graph links, questions, and saved outlines.
+
+### 5. Search performance
+
 > also why is it so slow every search
 
-Codex implemented grounded thematic comparison, differences in emphasis, clickable supporting passages, distinct thematic graph links, and saved study outlines with questions. Speed changes include parallel passage retrieval, ten-minute process-local result caching with duplicate-request coalescing, common-topic lexical fast paths, and final AI explanations loading after the graph is ready.
+**Outcome:** Parallelized passage retrieval, cached results, and loaded optional AI interpretation after the graph. Corrected nested full-Bible chapter parsing.
 
-A real debugging discovery: the original complete-Bible reader expected each chapter to directly contain `number` and `content`. The public API actually wraps them in `chapter`. This left the topic corpus empty. Codex inspected the real public dataset, corrected the reader, and added a nested-format regression check. Another AI tooling mistake in this session was mismatching a temporary script's heredoc terminator, causing the new functions not to be applied; the failing checks exposed it, and the scripts were repaired before testing again.
+### 6. Loading feedback
 
-Local observations: fear/hope graph loaded in about 2.1 seconds; a first local Romans 8:28 retrieval took about 0.93 seconds, and cached repeat requests about 0.001 seconds. These are local measurements, not guarantees for the public service. The local AI-unavailable fallback was tested without adding or accessing API secrets; the live configured backend is used for deployment verification.
+> while similarites are loading add loading instead of just nothing found
 
-These are AI-generated changes. Student manual code contributions, actual focused work time, and personal interpretation still need to be added honestly.
+**Outcome:** Added explicit pending states, instead of premature no-findings messages.
 
-## Loading-state follow-up
+### 7. Wrong Jesus/God result — verbatim excerpt from the pasted output
 
-User prompt (verbatim): “while similarites are loading add loading instead of just nothing found”
+> ext-based preview · AI comparison is unavailable right now. You can still explore and save this study.
 
-Changed the comparison status and empty finding placeholders to indicate loading while the AI request is pending. The loading state ends when the AI result arrives or the request fails; a failed request restores the text-based preview.
+**Outcome:** The pasted output also showed Colossians 4:11 for Jesus. Reproduced the failure, resolved plain Jesus to Jesus Christ rather than Justus, spread references across the dataset, and added validation retry and nonblank-question checks.
 
-## Incorrect Jesus/God result
+### 8. Counts, clutter, and explanations
 
-The user reported a Jesus search displaying Colossians 4:11 (Jesus called Justus), failed AI comparison, and blank numbered questions. Corrected backend identity resolution, diversified retrieved entity references, and added one validation retry. Frontend adds a Retry comparison button, rejects blank questions, and versions assets to avoid mixed cached code.
+> right now the left side doesnt date, there were 3 connections like yellow lines but tit still says 0 also there is a lot of info its overwelming also when i click on the yellow line i dont understand why theyre connected i just see that theyre connected and can read both passages
 
-## Connection clarity
+**Outcome:** Separated thematic counts from exact-reference overlap, collapsed details, and put pair-specific reasoning before optional passage readings.
 
-User prompt (verbatim): “right now the left side doesnt date, there were 3 connections like yellow lines but tit still says 0 also there is a lot of info its overwelming also when i click on the yellow line i dont understand why theyre connected i just see that theyre connected and can read both passages”
+### 9. Remove sidebar clutter
 
-Added live thematic-link counts separately from identical passage overlap, selectable connection titles, collapsed findings and overview, brief entity summaries, and an explanation-first inspector shared by graph-edge and sidebar selection. Browser checks confirmed three thematic links with zero identical references, hiding links reports zero visible, and selecting a connection shows its explanation before optional passage readings.
+> Shared passages only
+> Choose a yellow connection to see why the passages relate. get rid of this 0 identical passages and this
 
-## Sidebar cleanup
+**Outcome:** Removed the shared-only control, zero identical-reference display, and extra instruction.
 
-User requested removing the identical-passage count, Shared passages only control, and yellow-connection instruction. Removed these elements and the unused shared-only filtering handlers.
+### 10. Notebook folders
 
-## Notebook folders redesign
+> redo the notebook section it should be more clear where its at and the folders in them and stuff like that
 
-User prompt (verbatim): “redo the notebook section it should be more clear where its at and the folders in them and stuff like that”
+**Outcome:** Added a prominent notebook entry, folder list, breadcrumb, counts, rename/search/export, collapsed entries, and active-folder persistence.
 
-Added a prominent notebook entry with folder/passage totals, folder navigation and active-folder highlighting, breadcrumb and counts, folder creation/renaming/search/export, collapsed saved passages and study outlines, and note indicators. Existing version-1 storage remains compatible. Browser checks covered existing saved data, folder creation, rename, selected-folder persistence, note editing/persistence, folder search, and export of the whole folder despite a filtered view.
+### 11. Delete and save destinations
 
-## Folder deletion and clear saves
+> how do you delete notebooks and make it easier to know what youre savinf and to where
 
-User prompt (verbatim): “how do you delete notebooks and make it easier to know what youre savinf and to where”
+**Outcome:** Added recoverable folder deletion, restore, and reviews showing saved contents and destination. Verified notes survived deletion/restoration and duplicate study saves.
 
-Added folder deletion into persistent Recently deleted, restoration including notes/outlines, and save review dialogs showing item, contents, and destination. Users can choose an existing folder or create a new one; passage saves preserve existing notes, and study saves explicitly say when they update a folder’s outline. Verified delete/reload/restore and creating a destination folder while saving.
+### 12. Readability/documentation — verbatim excerpt
+
+> make sure my code is super readible and add comments enough so i understand it
+
+**Outcome:** Organized this factual process log, rebuilt outdated documentation, formatted source, added explanatory comments and a code walkthrough. Student-authored README wording and independent code contributions remain to be supplied.
+
+## One place AI got it wrong
+
+The AI-assisted implementation was reported as working after earlier successful tests, but the student then tried Jesus versus God and found the app had selected Jesus called Justus: the A result contained only Colossians 4:11. Earlier comparison tests had not covered this ambiguous person name. The student identified the bad result and pasted it into the chat. Codex reproduced it against the public API, inspected the separate Jesus and Jesus Christ dataset entries, changed plain Jesus to resolve to Jesus Christ, retained an explicit Justus query, added a regression check, and verified the deployed comparison. The lesson is to test ordinary ambiguous names and inspect the actual retrieved evidence, rather than treating a successful unrelated demo as proof that all searches work.
+
+Other real findings: the full-Bible reader expected chapter content at the wrong nesting level, leaving its topic corpus empty; the reader and a regression test were corrected. A temporary script's mismatched heredoc terminator caused edits not to apply, and failing checks exposed the mistake. A browser click using an outdated numeric index opened the wrong control; testing switched to named controls and checked the returned state.
+
+## Who contributed what
+
+**Student decisions and feedback evidenced here:** reuse the HW4 Scripture Graph foundation; request comparisons of meaning; ask for faster searches and loading feedback; report the incorrect Jesus result; identify misleading counts and overwhelming content; ask for clearer explanation of graph lines; direct removal of sidebar controls; request notebook folders, deletion, and explicit saving destinations. These are real product/design and evaluation contributions.
+
+**AI-written or substantially modified P2 code:** Codex implemented `index.html`, `styles.css`, `app.js`, and `graph-utils.js` updates; backend routes, retrieval, person resolution, comparison validation, cache, and AI integration changes; automated tests; comments; the code guide and supporting technical documentation.
+
+**Independent student code changes:** none have been specifically identified in the available conversation. Do not substitute the student’s requests, accepting generated code, or AI-authored comments for a manually written code contribution. After making a real change, add the exact file/function, what you changed, why, and how you verified it here.
+
+| My actual change | File / function | Why I changed it | How I checked it | Commit |
+|---|---|---|---|---|
+| Not yet recorded | | | | |
+
+## Work time — report actual P2 work
+
+The student reported approximately **8 hours** in chat. A session-by-session focused-work breakdown has not been supplied, so this document does not independently establish that total. Do not count reused HW4 work or idle agent/deployment waiting as eight hours of new student work. Fill the table with actual sessions and reconcile the total before submitting; no invented dates or activities have been added.
+
+| Actual date/session | New P2 task | Focused minutes | What I personally did / learned |
+|---|---|---:|---|
+| To be supplied by the student | | | |
+
+## Verification and deployment record
+
+Initial work passed 15 automated checks. Expanded comparison/performance work passed 27; the identity and validation fixes brought the checked total to 31 (8 JavaScript and 23 Python). Later notebook changes were additionally checked in the browser: preserved older saved studies, new/renamed folders, folder search, notes after refresh, exports of entire folders from filtered views, delete/reload/restore, and review of passage/study destinations with note-preserving merges. Not every rare timeout/storage-quota path was exercised end to end.
+
+Live observations included a first post-deployment fear/hope graph taking 15.0 seconds, a repeated browser search taking 0.1 seconds, and successful AI Jesus/God comparison after the identity fix. These are observed examples, not performance guarantees. Mobile testing was excluded by the student's scope choice.
+
+Representative actual commits include `3ebc30c` / `5fe4388` (initial frontend/backend changes), `e5027c2` / `ce05a43` (explained comparison and speed), `37b7580` (identity/validation repair), `b01c146` / `e09a8e0` (connection clarity), `b58a7ab` (notebook folders), and `da0b839` (delete/restore and save review). These identify AI-applied development history, not student-authored commits or proof of work across ten days.
+
+## Still needed from the student
+
+Write the README's personal explanation in your own words, record actual independent code changes, and supply real focused-work sessions. Review `CODE_GUIDE.md` and practice explaining the request flow, graph identity, grounded comparisons, browser storage, and secret handling. Record the demo and submit the course form yourself; this log does not claim those are completed.
