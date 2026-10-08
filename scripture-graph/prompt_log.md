@@ -72,7 +72,7 @@ P2 builds on the HW4 Scripture Graph. The prompts below record the new compariso
 
 ### 10. Notebook folders
 
-> redo the notebook section it should be more clear where its at and the folders in them and stuff like that
+> i have added a notebook section that should be a good start to the foundation, can you add it to the rest of the logic
 
 **Outcome:** Added a prominent notebook entry, folder list, breadcrumb, counts, rename/search/export, collapsed entries, and active-folder persistence.
 
