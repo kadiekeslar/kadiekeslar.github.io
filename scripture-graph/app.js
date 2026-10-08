@@ -269,8 +269,9 @@ function citationButtons(container, references, side) {
     button.addEventListener('click',()=> { revealReferences([reference]); const node=findReference(reference,side); if(node) selectNode(node); }); row.append(button); });
   container.append(row);
 }
-function renderInsights(report, message) {
+function renderInsights(report, message, loading = false) {
   currentReport = report;
+  $('comparisonInsights').setAttribute('aria-busy', String(loading));
   $('comparisonInsights').classList.remove('hidden'); $('comparisonOverview').textContent=report.overview; $('insightsStatus').textContent=message;
   $('similarityCards').replaceChildren(); $('differenceCards').replaceChildren();
   for (const [kind,items,id] of [['similarity',report.similarities,'similarityCards'],['difference',report.differences,'differenceCards']]) {
@@ -282,7 +283,12 @@ function renderInsights(report, message) {
       citationButtons(card,item.left_refs,0); citationButtons(card,item.right_refs,1);
       const focus=document.createElement('button'); focus.className='focus-evidence'; focus.textContent='Highlight supporting passages'; focus.addEventListener('click',()=>revealReferences([...item.left_refs,...item.right_refs])); card.append(focus); $(id).append(card);
     });
-    if(!items.length) $(id).textContent=kind==='similarity' ? 'No supported connection identified in this selection yet.' : 'No supported difference identified in this selection.';
+    if(!items.length) {
+      const placeholder=document.createElement('p');
+      placeholder.className=loading ? 'help-text insight-loading' : 'help-text';
+      placeholder.textContent=loading ? (kind==='similarity' ? 'Loading similarities…' : 'Loading differences…') : (kind==='similarity' ? 'No supported connection identified in this selection.' : 'No supported difference identified in this selection.');
+      $(id).append(placeholder);
+    }
   }
   $('studyQuestions').replaceChildren(); report.study_questions.forEach(q=> {const li=document.createElement('li'); li.textContent=q; $('studyQuestions').append(li);});
   cy.edges('[type="theme-bridge"]').remove();
@@ -296,7 +302,8 @@ function renderInsights(report, message) {
 async function loadComparison(data, number) {
   const key=JSON.stringify([data.comparison.left,data.comparison.right]);
   if(insightsCache.has(key)) { renderInsights(insightsCache.get(key),'AI-assisted interpretation · check the supporting passages.'); return; }
-  renderInsights(textComparison(data),'Text-based preview. Reading the retrieved passages for a deeper AI comparison…');
+  const preview=textComparison(data);
+  renderInsights(preview,'Loading similarities and differences… Any findings below are a text-based preview.',true);
   const controller=new AbortController(); insightsController=controller;
   const timer=setTimeout(()=>controller.abort(),70000);
   try {
@@ -306,7 +313,7 @@ async function loadComparison(data, number) {
     if(number!==requestNumber) return;
     insightsCache.set(key,report); if(insightsCache.size>20) insightsCache.delete(insightsCache.keys().next().value);
     renderInsights(report,'AI-assisted interpretation · based on retrieved passages, with evidence for each finding.');
-  } catch(_) { if(number===requestNumber) $('insightsStatus').textContent='Text-based preview · AI comparison is unavailable right now. You can still explore and save this study.'; }
+  } catch(_) { if(number===requestNumber) renderInsights(preview,'Text-based preview · AI comparison is unavailable right now. You can still explore and save this study.'); }
   finally {clearTimeout(timer); if(insightsController===controller) insightsController=null;}
 }
 async function loadExplanations(query, number) {

@@ -234,3 +234,5 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .study-questions summary { cursor: pointer; color: #f1cf75; }
 .line-key.thematic { border-color: #f1cf75; border-top-style: dashed; }
 .saved-outline { padding-bottom: 20px; border-bottom: 1px solid var(--line); font-size: 13px; line-height: 1.7; }
+
+.insight-loading { color: #d8bd79; padding: 12px 0; }

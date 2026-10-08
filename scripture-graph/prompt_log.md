@@ -68,3 +68,9 @@ A real debugging discovery: the original complete-Bible reader expected each cha
 Local observations: fear/hope graph loaded in about 2.1 seconds; a first local Romans 8:28 retrieval took about 0.93 seconds, and cached repeat requests about 0.001 seconds. These are local measurements, not guarantees for the public service. The local AI-unavailable fallback was tested without adding or accessing API secrets; the live configured backend is used for deployment verification.
 
 These are AI-generated changes. Student manual code contributions, actual focused work time, and personal interpretation still need to be added honestly.
+
+## Loading-state follow-up
+
+User prompt (verbatim): “while similarites are loading add loading instead of just nothing found”
+
+Changed the comparison status and empty finding placeholders to indicate loading while the AI request is pending. The loading state ends when the AI result arrives or the request fails; a failed request restores the text-based preview.
