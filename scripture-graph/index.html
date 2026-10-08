@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Scripture Graph · Compare & Study</title>
-  <link rel="stylesheet" href="styles.css?v=connection-clarity" />
+  <link rel="stylesheet" href="styles.css?v=sidebar-cleanup" />
   <script defer src="https://unpkg.com/cytoscape@3.31.2/dist/cytoscape.min.js"></script>
-  <script defer src="graph-utils.js?v=connection-clarity"></script>
-  <script defer src="app.js?v=connection-clarity"></script>
+  <script defer src="graph-utils.js?v=sidebar-cleanup"></script>
+  <script defer src="app.js?v=sidebar-cleanup"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -24,9 +24,7 @@
       <div id="comparisonPanel" class="hidden">
         <div class="panel-heading">CONNECTIONS BETWEEN SEARCHES</div>
         <div id="comparisonStats"></div><div id="thematicStats" role="status"></div><div id="thematicList"></div>
-        <p class="help-text">Yellow lines connect shared ideas. Shared passages count identical references.</p>
-        <label class="toggle-row"><input id="sharedOnly" type="checkbox" /> Shared passages only</label>
-        <div id="sharedList"></div>
+        <p class="help-text">Yellow lines connect shared ideas.</p>
       </div>
       <div class="panel-heading">FILTER / NODE TYPE</div><div id="filterList"></div>
       <div class="legend"><div class="panel-heading">RELATIONSHIPS</div><div><span class="line-key solid"></span>CROSS REFERENCE</div><div><span class="line-key dashed"></span>CONTEXT / REFERENCE</div><div><span class="line-key dotted"></span>TOPIC / SUBTHEME</div><div><span class="line-key thematic"></span>THEMATIC LINK</div></div>

@@ -171,7 +171,7 @@ function updateThematicStats() {
 }
 function showThematicConnection(link) {
   if(!link?.length) return;
-  $('sharedOnly').checked=false; $('themeLinks').checked=true;
+  $('themeLinks').checked=true;
   $('filterList').querySelectorAll('input').forEach(i=>{if(i.value==='verse') i.checked=true;});
   applyFilters();
   const a=link.source(), b=link.target(), d=link.data();
@@ -197,30 +197,23 @@ function renderFilters(data) {
   data.nodes.forEach(n => { counts[n.data.type] = (counts[n.data.type] || 0) + 1; });
   $('filterList').innerHTML = Object.entries(counts).map(([type,count]) => `<label class="filter-row"><input type="checkbox" value="${escapeHtml(type)}" checked /><span>${escapeHtml(type)}</span><span>${count}</span></label>`).join('');
   $('filterList').querySelectorAll('input').forEach(input => input.addEventListener('change',applyFilters));
-  $('sharedOnly').checked = false;
 }
 function renderComparison(data) {
-  $('comparisonPanel').classList.toggle('hidden', !data.comparison); $('sharedList').replaceChildren();
+  $('comparisonPanel').classList.toggle('hidden', !data.comparison);
   $('themeLinksControl').classList.toggle('hidden', !data.comparison);
   if (!data.comparison) return;
   const c = data.comparison;
-  $('comparisonStats').innerHTML = `<div class="comparison-key left-key">A: ${escapeHtml(c.left)} · ${c.leftOnly+c.shared} passages</div><div class="comparison-key right-key">B: ${escapeHtml(c.right)} · ${c.rightOnly+c.shared} passages</div><div class="comparison-key shared-key">${c.shared} identical passages</div>`;
-  data.nodes.filter(n => n.data.membership === 'shared').forEach(({data:d}) => {
-    const button = document.createElement('button'); button.className = 'shared-passage'; button.textContent = d.label;
-    button.addEventListener('click', () => { $('sharedOnly').checked = false; $('filterList').querySelectorAll('input').forEach(i => { if (i.value === 'verse') i.checked = true; }); applyFilters(); selectNode(cy.getElementById(d.id)); });
-    $('sharedList').append(button);
-  });
-  if (!c.shared) $('sharedList').textContent = 'Choose a yellow connection to see why the passages relate.';
+  $('comparisonStats').innerHTML = `<div class="comparison-key left-key">A: ${escapeHtml(c.left)} · ${c.leftOnly+c.shared} passages</div><div class="comparison-key right-key">B: ${escapeHtml(c.right)} · ${c.rightOnly+c.shared} passages</div>`;
+
 }
 function applyFilters() {
   if (!cy) return;
   const types = [...$('filterList').querySelectorAll('input:checked')].map(i => i.value);
-  const shared = $('sharedOnly').checked;
-  cy.nodes().forEach(n => n.style('display', types.includes(n.data('type')) && (!shared || n.data('membership') === 'shared') ? 'element' : 'none'));
+  cy.nodes().forEach(n => n.style('display', types.includes(n.data('type')) ? 'element' : 'none'));
   cy.edges().forEach(e => e.style('display', e.source().visible() && e.target().visible() && (e.data('type') !== 'theme-bridge' || $('themeLinks').checked) ? 'element' : 'none'));
   cy.elements().removeClass('faded focused'); clearInspector(); fitGraph();
   updateThematicStats();
-  $('footerMessage').textContent = shared && !cy.nodes(':visible').length ? 'No shared passages visible. Turn off the shared filter or enable verses.' : `${cy.nodes(':visible').length} visible nodes`;
+  $('footerMessage').textContent = `${cy.nodes(':visible').length} visible nodes`;
 }
 function renderCollectionOptions() {
   for (const id of ['saveCollection','notebookCollection']) {
@@ -258,8 +251,7 @@ $('searchForm').addEventListener('submit',event => { event.preventDefault(); run
 $('cancelButton').addEventListener('click', () => activeController?.abort());
 $('retryButton').addEventListener('click', () => { if (lastSearch) runSearch(...lastSearch); });
 $('fitButton').addEventListener('click', fitGraph);
-$('resetButton').addEventListener('click', () => { if (!cy) return; $('sharedOnly').checked = false; $('filterList').querySelectorAll('input').forEach(i => i.checked = true); applyFilters(); showNodeDetails(cy.getElementById(currentData.center)); });
-$('sharedOnly').addEventListener('change',applyFilters);
+$('resetButton').addEventListener('click', () => { if (!cy) return; $('filterList').querySelectorAll('input').forEach(i => i.checked = true); applyFilters(); showNodeDetails(cy.getElementById(currentData.center)); });
 document.querySelectorAll('[data-query]').forEach(button => button.addEventListener('click', () => { $('searchInput').value = button.dataset.query; $('compareInput').value = button.dataset.compare || ''; runSearch(); }));
 $('notebookButton').addEventListener('click', () => { renderNotebook(); $('notebookDialog').showModal(); });
 $('closeNotebook').addEventListener('click', () => $('notebookDialog').close());
@@ -288,7 +280,6 @@ function findReference(reference, side) {
   return cy.nodes().filter(n => n.data('type') === 'verse' && (n.data('reference') || n.data('label')) === reference && (!n.data('evidence') || n.data('evidence').some(e=>e.side === side)))[0];
 }
 function revealReferences(refs) {
-  $('sharedOnly').checked = false;
   $('filterList').querySelectorAll('input').forEach(i => { if (i.value === 'verse') i.checked = true; });
   applyFilters();
   const nodes = cy.nodes().filter(n=>refs.includes(n.data('reference') || n.data('label')));
