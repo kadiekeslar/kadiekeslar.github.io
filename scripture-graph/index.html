@@ -3,110 +3,59 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Scripture Graph</title>
+  <title>Scripture Graph · Compare & Study</title>
   <link rel="stylesheet" href="styles.css" />
-  <script src="https://unpkg.com/cytoscape@3.31.2/dist/cytoscape.min.js"></script>
+  <script defer src="https://unpkg.com/cytoscape@3.31.2/dist/cytoscape.min.js"></script>
+  <script defer src="graph-utils.js"></script>
+  <script defer src="app.js"></script>
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <div class="brand">
-        <span class="brand-mark">SG</span>
-        <div>
-          <div class="brand-title">SCRIPTURE GRAPH</div>
-          <div class="brand-subtitle">BIBLICAL KNOWLEDGE NETWORK</div>
-        </div>
-      </div>
-
-      <div class="search-wrap">
-        <input
-          id="searchInput"
-          type="search"
-          placeholder="Search fear, Moses, John 3:16, what does Jesus say about fear..."
-          autocomplete="off"
-        />
-        <button id="searchButton">EXPLORE</button>
-      </div>
-
-      <div class="system-status">
-        <span class="status-dot"></span>
-        <span id="apiStatus">READY</span>
-      </div>
+      <div class="brand"><span class="brand-mark">SG</span><div><div class="brand-title">SCRIPTURE GRAPH</div><div class="brand-subtitle">COMPARE & STUDY</div></div></div>
+      <form id="searchForm" class="search-wrap">
+        <label class="sr-only" for="searchInput">First search</label><input id="searchInput" type="search" maxlength="300" placeholder="Verse, person, topic, or question…" required />
+        <label class="sr-only" for="compareInput">Second search, optional</label><input id="compareInput" type="search" maxlength="300" placeholder="Compare with… (optional)" />
+        <button id="searchButton" type="submit">EXPLORE</button>
+      </form>
+      <div class="system-status"><span class="status-dot"></span><span id="apiStatus" role="status">READY</span></div>
     </header>
-
     <aside class="left-panel">
-      <div class="panel-heading">FILTER / NODE TYPE</div>
-      <div id="filterList"></div>
-
-      <div class="legend">
-        <div class="panel-heading">RELATIONSHIPS</div>
-        <div><span class="line-key solid"></span>CROSS REFERENCE</div>
-        <div><span class="line-key dashed"></span>CONTEXT / REFERENCE</div>
-        <div><span class="line-key dotted"></span>TOPIC / SUBTHEME</div>
+      <div id="comparisonPanel" class="hidden">
+        <div class="panel-heading">PASSAGE COMPARISON</div>
+        <div id="comparisonStats"></div>
+        <p class="help-text">Exact reference overlap among retrieved passages, not an exhaustive Bible comparison. Different verse ranges count separately.</p>
+        <label class="toggle-row"><input id="sharedOnly" type="checkbox" /> Shared passages only</label>
+        <div id="sharedList"></div>
       </div>
-
-      <div class="stats">
-        <div class="panel-heading">NETWORK</div>
-        <div class="stat"><span>NODES</span><strong id="nodeCount">0</strong></div>
-        <div class="stat"><span>EDGES</span><strong id="edgeCount">0</strong></div>
-        <div class="stat"><span>MODE</span><strong id="queryType">—</strong></div>
-      </div>
-
-      <div class="source-block">
-        <div class="panel-heading">DATA SOURCES</div>
-        <div id="sourceList">Search to load sources.</div>
-      </div>
+      <div class="panel-heading">FILTER / NODE TYPE</div><div id="filterList"></div>
+      <div class="legend"><div class="panel-heading">RELATIONSHIPS</div><div><span class="line-key solid"></span>CROSS REFERENCE</div><div><span class="line-key dashed"></span>CONTEXT / REFERENCE</div><div><span class="line-key dotted"></span>TOPIC / SUBTHEME</div></div>
+      <div class="stats"><div class="panel-heading">NETWORK</div><div class="stat"><span>NODES</span><strong id="nodeCount">0</strong></div><div class="stat"><span>EDGES</span><strong id="edgeCount">0</strong></div><div class="stat"><span>MODE</span><strong id="queryType">—</strong></div></div>
+      <div class="source-block"><div class="panel-heading">DATA SOURCES</div><div id="sourceList">Search to load sources.</div><p class="help-text">Verse text comes from the Berean Standard Bible. Topic categories and explanations may be AI-generated. Chapter context does not mean an entity appears in the selected verse.</p></div>
     </aside>
-
     <main class="graph-stage">
       <div class="graph-label">NETWORK / DRAG • ZOOM • SELECT</div>
-      <div id="cy"></div>
-
-      <div id="emptyState" class="empty-stage">
-        <div class="empty-kicker">SEARCH THE BIBLE AS A NETWORK</div>
-        <h1>Start anywhere.</h1>
-        <p>Broad topics become organized clusters of real Bible passages.</p>
-        <div class="examples">
-          <button data-query="fear">fear</button>
-          <button data-query="what does Jesus say about fear?">Jesus on fear</button>
-          <button data-query="Moses">Moses</button>
-          <button data-query="Romans 8:28">Romans 8:28</button>
-        </div>
-      </div>
-
-      <div id="loadingState" class="loading-stage hidden">
-        <div class="loader"></div>
-        <div>RETRIEVING + ORGANIZING SCRIPTURE</div>
-      </div>
+      <div class="graph-controls"><button id="fitButton">Fit graph</button><button id="resetButton">Reset view</button><button id="notebookButton">Study notebook</button></div>
+      <div id="cy" aria-label="Interactive Scripture graph"></div>
+      <div id="emptyState" class="empty-stage"><div class="empty-kicker">SEARCH · COMPARE · COLLECT</div><h1>Follow a connection.</h1><p>Explore passages, compare searches, and build your own study notebook.</p><div class="examples"><button data-query="fear" data-compare="hope">fear ↔ hope</button><button data-query="Romans 8:28" data-compare="James 1:12">compare verses</button><button data-query="Moses">Moses</button></div></div>
+      <div id="loadingState" class="loading-stage hidden"><div class="loader"></div><div id="loadingMessage" role="status">RETRIEVING + ORGANIZING SCRIPTURE</div><button id="cancelButton">Cancel search</button></div>
+      <div id="errorBanner" class="error-banner hidden" role="alert"><span id="errorMessage"></span><button id="retryButton">Retry</button></div>
     </main>
-
     <aside class="inspector">
-      <div class="panel-heading">INSPECTOR</div>
-      <div class="inspector-type" id="detailType">NO SELECTION</div>
-      <h1 id="detailLabel">Scripture Graph</h1>
-      <p class="detail-summary" id="detailSummary">
-        Search a verse, person, place, event, topic, or natural-language Bible question.
-      </p>
-
+      <div class="panel-heading">INSPECTOR</div><div class="inspector-type" id="detailType">NO SELECTION</div><h1 id="detailLabel">Scripture Graph</h1><p class="detail-summary" id="detailSummary">Search once to explore, or enter a second search to compare.</p>
       <blockquote id="verseText" class="verse-text hidden"></blockquote>
-      <div id="detailMeta" class="detail-meta"></div>
-
-      <div class="connections-header">
-        <span>CONNECTIONS</span>
-        <span id="connectionCount">—</span>
-      </div>
-
-      <div id="connectionList" class="connection-list">
-        <div class="empty-state">No node selected.</div>
-      </div>
+      <div id="saveControls" class="hidden"><label for="saveCollection">Save to collection</label><select id="saveCollection"></select><button id="saveVerseButton">Save passage</button><p id="saveMessage" role="status"></p></div>
+      <div id="detailMeta" class="detail-meta"></div><div class="connections-header"><span>CONNECTIONS</span><span id="connectionCount">—</span></div><div id="connectionList"><div class="empty-state">No node selected.</div></div>
     </aside>
-
-    <footer class="footerbar">
-      <span>HW4 / AI + RETRIEVED BIBLE DATA</span>
-      <span id="footerMessage">READY</span>
-    </footer>
+    <footer class="footerbar"><span>P2 / COMPARE & STUDY</span><span id="footerMessage">READY</span></footer>
   </div>
-
-  <script src="app.js"></script>
+  <dialog id="notebookDialog">
+    <div class="notebook-header"><div><div class="panel-heading">YOUR STUDY WORKSPACE</div><h2>Study notebook</h2></div><button id="closeNotebook">Close</button></div>
+    <p class="help-text">Saved in this browser on this device. Export a backup before clearing browser data. Notes stay in your browser.</p>
+    <p id="storageMessage" role="status"></p>
+    <form id="collectionForm"><label class="sr-only" for="collectionName">New collection name</label><input id="collectionName" placeholder="New collection name" maxlength="80" required /><button>Create collection</button></form>
+    <div class="notebook-toolbar"><label for="notebookCollection">Collection</label><select id="notebookCollection"></select><button id="exportButton">Export Markdown</button></div>
+    <div id="notebookEntries"></div>
+  </dialog>
 </body>
 </html>
