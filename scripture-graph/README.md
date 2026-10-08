@@ -113,3 +113,5 @@ Run frontend checks with `node --test scripture-graph/tests/graph.test.cjs` from
 ### Notebook folders
 
 Open **My notebook** in the left sidebar. Choose a folder to view its saved passages and study outline, create or rename folders, search saved text/notes, and export the entire folder as Markdown. Passage notes save automatically. The notebook remembers the last selected folder and keeps existing stored studies. Storage remains local to this browser and device.
+
+Choose **Delete folder** in the open folder to move it into **Recently deleted**. Restore it from the folder sidebar. Saving a passage or study now opens a review with its contents and destination; choose a folder or create one before confirming. Existing passage notes survive duplicate saves.

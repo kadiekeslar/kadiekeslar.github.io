@@ -294,3 +294,24 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .remove-passage { font-size: 11px; color: #b3bcc3; background: transparent; }
 .notebook-empty { border: 1px dashed #46525b; padding: 28px; font-size: 13px; line-height: 1.7; color: var(--muted); }
 .notebook-empty h4 { margin: 0; color: var(--text); font-size: 17px; }
+
+#savePassageTitle { color: #f1cf75; font-size: 13px; }
+#saveDestination { margin: 0 0 5px; color: #d4dde2; }
+#deleteFolderButton { color: #d8a6a0; }
+.delete-folder-confirm { border: 1px solid #78504b; padding: 14px; margin: 0 0 16px; font-size: 13px; line-height: 1.6; }
+.delete-folder-confirm h4 { margin: 0; }
+.delete-folder-confirm button { font-size: 11px; margin-right: 8px; }
+#deletedFolders { font-size: 12px; margin-top: 24px; color: var(--muted); }
+#deletedFolders > summary { cursor: pointer; }
+#deletedFolderList { margin-top: 12px; line-height: 1.6; }
+.deleted-folder { border-top: 1px solid var(--line); padding: 8px 0; }
+.deleted-folder button { font-size: 11px; }
+#saveReviewDialog { width: min(600px, 90vw); max-height: 85vh; overflow-y: auto; color: var(--text); background: var(--panel); border: 1px solid #6e6244; padding: 26px; }
+#saveReviewDialog::backdrop { background: rgba(0,0,0,.75); }
+#saveReviewForm > label, #saveNewFolderFields > label { display: block; font-size: 13px; margin: 18px 0 8px; }
+#saveReviewFolder, #saveNewFolderName { width: 100%; color: var(--text); background: var(--panel2); border: 1px solid var(--line); padding: 12px; }
+#saveReviewContents { font-size: 13px; color: var(--muted); line-height: 1.7; }
+#saveReviewPreview { margin: 18px 0; padding: 14px; border-left: 2px solid #d8bd79; font: 15px/1.7 Georgia,serif; max-height: 170px; overflow-y: auto; }
+.save-review-destination { background: #24231b; border: 1px solid #685b3e; padding: 13px; font-size: 14px; }
+#saveReviewError { color: #e8aba3; font-size: 12px; }
+#confirmSaveReview { width: 100%; color: #f1cf75; border-color: #78653d; }

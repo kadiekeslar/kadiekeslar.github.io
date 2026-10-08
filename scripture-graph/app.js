@@ -6,12 +6,13 @@ const {validateGraph, mergeGraphs, toMarkdown, textComparison, validateCompariso
 const $ = id => document.getElementById(id);
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 let cy = null, currentData = null, selectedPassage = null;
+let pendingSave=null;
 let requestNumber = 0, activeController = null, lastSearch = null;
 const cache = new Map();
 const insightsCache = new Map();
 let currentReport = null, insightsController = null, backgroundController = null;
 const STORAGE_KEY = 'scripture-graph-notebook-v1';
-let notebook = {version: 1, collections: [{id: 'default', name: 'My study', entries: []}]};
+let notebook = {version: 1, trash: [], collections: [{id: 'default', name: 'My study', entries: []}]};
 try {
   const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
   if (saved) {
@@ -19,7 +20,8 @@ try {
       saved.collections.every(c => typeof c.id === 'string' && typeof c.name === 'string' && Array.isArray(c.entries) &&
         c.entries.every(e => ['id','reference','text','source','query','note'].every(k => typeof e[k] === 'string')));
     if (!valid) throw new Error('Invalid stored notebook');
-    saved.collections.forEach(c=> {
+    saved.trash=Array.isArray(saved.trash)?saved.trash.filter(c=>typeof c.id==='string' && typeof c.name==='string' && Array.isArray(c.entries) && c.entries.every(e=>['id','reference','text','source','query','note'].every(k=>typeof e[k]==='string'))):[];
+    [...saved.collections,...saved.trash].forEach(c=> {
       const o=c.outline;
       if(o && (typeof o.overview!=='string' || !Array.isArray(o.similarities) || !Array.isArray(o.differences) || !Array.isArray(o.study_questions) || !o.study_questions.every(q=>typeof q==='string') || ![...o.similarities,...o.differences].every(i=>typeof i.title==='string' && Array.isArray(i.left_refs) && Array.isArray(i.right_refs)))) delete c.outline;
     });
@@ -145,7 +147,7 @@ function showNodeDetails(node) {
   if (d.type === 'verse' && d.text) {
     $('verseText').textContent = d.text; $('verseText').classList.remove('hidden');
     selectedPassage = {id:d.reference || d.label, reference:d.reference || d.label, text:d.text, source:d.sourceName || 'Berean Standard Bible', query:currentData?.query || '', note:''};
-    $('saveControls').classList.remove('hidden');
+    $('saveControls').classList.remove('hidden'); updatePassageSavePreview();
   }
   const meta = [['SOURCE',d.sourceName],['REFERENCE',d.reference],['SEARCH',d.membership],['EXPLANATIONS','Summaries and connection explanations may be AI-generated.']];
   $('detailMeta').innerHTML = meta.filter(([,v]) => v).map(([k,v]) => `<div class="meta-row"><span class="meta-label">${escapeHtml(k)}</span><span class="meta-value">${escapeHtml(v)}</span></div>`).join('');
@@ -220,7 +222,7 @@ function renderCollectionOptions() {
   const previous=$('saveCollection').value;
   $('saveCollection').innerHTML=notebook.collections.map(c=>`<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
   if(notebook.collections.some(c=>c.id===previous)) $('saveCollection').value=previous;
-  updateNotebookCounts();
+  updateNotebookCounts(); updatePassageSavePreview();
 }
 function updateNotebookCounts() {
   const total=notebook.collections.reduce((sum,c)=>sum+c.entries.length,0);
@@ -233,13 +235,19 @@ function updateNotebookCounts() {
     const count=document.createElement('small');count.textContent=`${c.entries.length} ${c.entries.length===1?'passage':'passages'}${c.outline?' · study outline':''}`;
     button.append(title,count);button.addEventListener('click',()=>openNotebook(c.id));$('folderList').append(button);
   });
+  $('deletedFoldersTitle').textContent=`Recently deleted (${notebook.trash.length})`; $('deletedFolderList').replaceChildren();
+  notebook.trash.forEach(folder=> {
+    const row=document.createElement('div'),name=document.createElement('p'),button=document.createElement('button');row.className='deleted-folder';name.textContent=`${folder.name} · ${folder.entries.length} passages`;button.textContent=`Restore ${folder.name}`;
+    button.addEventListener('click',()=>restoreFolder(folder.id));row.append(name,button);$('deletedFolderList').append(row);
+  });
+  if(!notebook.trash.length) $('deletedFolderList').textContent='Deleted folders can be restored here.';
   const c=chosenCollection(),notes=c.entries.filter(e=>e.note.trim()).length;
   $('folderSummary').textContent=`${c.entries.length} saved ${c.entries.length===1?'passage':'passages'} · ${notes} ${notes===1?'note':'notes'}${c.outline?' · 1 study outline':''}`;
 }
 function openNotebook(id) {
   if(id && notebook.collections.some(c=>c.id===id)) {notebook.activeCollectionId=id;persistNotebook();}
   $('saveCollection').value=chosenCollection().id;
-  $('notebookSearch').value='';$('renameFolderForm').classList.add('hidden');renderNotebook();
+  $('notebookSearch').value='';$('renameFolderForm').classList.add('hidden');$('deleteFolderConfirm').classList.add('hidden');renderNotebook();
   if(!$('notebookDialog').open) $('notebookDialog').showModal();
 }
 function renderNotebook() {
@@ -305,12 +313,76 @@ $('renameFolderForm').addEventListener('submit',event=> {
   if(notebook.collections.some(c=>c.id!==collection.id && c.name.toLowerCase()===name.toLowerCase())) {$('storageMessage').textContent='Another folder already has that name.';return;}
   collection.name=name;persistNotebook();renderCollectionOptions();renderNotebook();$('renameFolderForm').classList.add('hidden');
 });
-$('saveVerseButton').addEventListener('click', () => {
-  if (!selectedPassage) return; const collection = notebook.collections.find(c => c.id === $('saveCollection').value);
-  if (collection.entries.some(e => e.id === selectedPassage.id)) { $('saveMessage').textContent = 'Already saved in this folder.'; return; }
-  collection.entries.push({...selectedPassage});
-  $('saveMessage').textContent = persistNotebook() ? `Saved to ${collection.name}.` : 'Saved for this session. Open the notebook and export a backup.';
+function updatePassageSavePreview() {
+  if(!selectedPassage) return;
+  const folder=notebook.collections.find(c=>c.id===$('saveCollection').value) || chosenCollection();
+  $('savePassageTitle').textContent=`Saving: ${selectedPassage.reference}`;
+  $('saveDestination').textContent=`My notebook / ${folder.name}`;
+}
+function updateSaveReview() {
+  const creating=$('saveReviewFolder').value==='__new__';
+  $('saveNewFolderFields').classList.toggle('hidden',!creating); $('saveNewFolderName').required=creating;
+  const folder=notebook.collections.find(c=>c.id===$('saveReviewFolder').value);
+  const name=creating?($('saveNewFolderName').value.trim() || 'New folder'):folder?.name;
+  $('saveReviewDestination').textContent=`Destination: My notebook / ${name}`;
+  $('confirmSaveReview').textContent=creating?'Create folder & save':`Save to ${name}`;
+  $('saveReviewNotice').textContent=pendingSave?.kind==='outline' && folder?.outline?'This updates this folder’s saved comparison outline. Existing passage notes are kept.':pendingSave?.kind==='passage' && folder?.entries.some(e=>e.id===pendingSave.passage.id)?'This passage is already in this folder; its notes will be kept.':'';
+  $('saveReviewError').textContent='';
+}
+function reviewSave(kind) {
+  if(kind==='passage' && !selectedPassage || kind==='outline' && (!currentReport || !currentData?.comparison)) return;
+  pendingSave=kind==='passage'?{kind,passage:structuredClone(selectedPassage)}:{kind,study:buildStudyOutline(currentData,currentReport)};
+  $('saveReviewFolder').innerHTML=notebook.collections.map(c=>`<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('')+'<option value="__new__">+ Create a new folder</option>';
+  $('saveReviewFolder').value=kind==='outline'?'__new__':$('saveCollection').value;
+  $('saveNewFolderName').value=kind==='outline'?pendingSave.study.name:'';
+  $('saveReviewTitle').textContent=kind==='passage'?'Save this passage':'Save this study';
+  $('saveReviewItem').textContent=kind==='passage'?pendingSave.passage.reference:pendingSave.study.name;
+  $('saveReviewContents').textContent=kind==='passage'?'Includes this verse’s text and the search it came from. Add personal notes in your notebook.':`${pendingSave.study.entries.length} supporting passages, similarities and differences, and study questions. ${pendingSave.study.outline.method==='ai'?'Includes AI interpretation.':'This is a text-based preview.'}`;
+  $('saveReviewPreview').textContent=kind==='passage'?pendingSave.passage.text:pendingSave.study.outline.overview;
+  updateSaveReview();$('saveReviewDialog').showModal();
+}
+$('saveCollection').addEventListener('change',()=>{updatePassageSavePreview();$('saveMessage').textContent='';});
+$('saveVerseButton').addEventListener('click',()=>reviewSave('passage'));
+$('saveReviewFolder').addEventListener('change',updateSaveReview);
+$('saveNewFolderName').addEventListener('input',updateSaveReview);
+$('cancelSaveReview').addEventListener('click',()=>$('saveReviewDialog').close());
+$('saveReviewForm').addEventListener('submit',event=> {
+  event.preventDefault();if(!pendingSave) return;
+  let folder=notebook.collections.find(c=>c.id===$('saveReviewFolder').value);
+  if($('saveReviewFolder').value==='__new__') {
+    const name=$('saveNewFolderName').value.trim();if(!name) return;
+    if(notebook.collections.some(c=>c.name.toLowerCase()===name.toLowerCase())) {$('saveReviewError').textContent='That folder already exists. Choose it above or use another name.';return;}
+    folder={id:crypto.randomUUID(),name,entries:[]};notebook.collections.push(folder);
+  }
+  if(!folder) return;
+  const incoming=pendingSave.kind==='passage'?[pendingSave.passage]:pendingSave.study.entries;
+  incoming.forEach(entry=>{if(!folder.entries.some(e=>e.id===entry.id)) folder.entries.push({...entry});});
+  if(pendingSave.kind==='outline') folder.outline=pendingSave.study.outline;
+  const item=pendingSave.kind==='passage'?pendingSave.passage.reference:'Study outline and supporting passages';
+  notebook.activeCollectionId=folder.id;const saved=persistNotebook();renderCollectionOptions();$('saveCollection').value=folder.id;updatePassageSavePreview();
+  $('saveReviewDialog').close();pendingSave=null;openNotebook(folder.id);
+  $('storageMessage').textContent=saved?`${item} saved to My notebook / ${folder.name}.`:'Saved for this session. Export this folder to keep a backup.';
+  $('saveMessage').textContent=`${item} → My notebook / ${folder.name}`;
 });
+$('deleteFolderButton').addEventListener('click',()=> {
+  const folder=chosenCollection();$('deleteFolderSummary').textContent=`“${folder.name}” contains ${folder.entries.length} saved passages${folder.outline?' and a study outline':''}. It will move to Recently deleted, where you can restore it.`;
+  $('deleteFolderConfirm').classList.remove('hidden');
+});
+$('cancelDeleteFolder').addEventListener('click',()=>$('deleteFolderConfirm').classList.add('hidden'));
+$('confirmDeleteFolder').addEventListener('click',()=> {
+  const folder=chosenCollection();notebook.collections=notebook.collections.filter(c=>c.id!==folder.id);notebook.trash.push(folder);
+  if(!notebook.collections.length) notebook.collections.push({id:crypto.randomUUID(),name:'My study',entries:[]});
+  notebook.activeCollectionId=notebook.collections[0].id;persistNotebook();renderCollectionOptions();openNotebook(notebook.activeCollectionId);
+  $('storageMessage').textContent=`${folder.name} moved to Recently deleted. You can restore it from the folder sidebar.`;
+});
+function restoreFolder(id) {
+  const folder=notebook.trash.find(c=>c.id===id);if(!folder) return;
+  notebook.trash=notebook.trash.filter(c=>c.id!==id);
+  if(notebook.collections.some(c=>c.id===id)) folder.id=crypto.randomUUID();
+  if(notebook.collections.some(c=>c.name===folder.name)) {const base=folder.name;let count=1;while(notebook.collections.some(c=>c.name===folder.name)) folder.name=`${base} (restored ${count++})`;}
+  notebook.collections.push(folder);persistNotebook();renderCollectionOptions();openNotebook(folder.id);
+  $('storageMessage').textContent=`Restored ${folder.name}, including its passages and notes.`;
+}
 $('exportButton').addEventListener('click', () => {
   const collection = chosenCollection(); const blob = new Blob([toMarkdown(collection)],{type:'text/markdown;charset=utf-8'});
   const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url;
@@ -407,11 +479,6 @@ async function loadExplanations(query, number) {
 $('retryComparisonButton').addEventListener('click',()=> { if(currentData?.comparison) loadComparison(currentData,requestNumber); });
 $('themeLinks').addEventListener('change',applyFilters);
 $('toggleInsightsButton').addEventListener('click',()=> {const collapsed=$('insightsBody').classList.toggle('hidden'); $('toggleInsightsButton').textContent=collapsed?'Expand':'Collapse'; $('toggleInsightsButton').setAttribute('aria-expanded',String(!collapsed)); fitGraph();});
-$('saveOutlineButton').addEventListener('click',()=> {
-  if(!currentReport || !currentData?.comparison) return;
-  const collection={id:crypto.randomUUID(),...buildStudyOutline(currentData,currentReport)};
-  notebook.collections.push(collection); persistNotebook(); renderCollectionOptions(); $('saveCollection').value=collection.id;
-  openNotebook(collection.id);
-});
+$('saveOutlineButton').addEventListener('click',()=>reviewSave('outline'));
 // Start waking the backend while the visitor decides what to search.
 fetch(`${API_BASE}/health`,{signal:AbortSignal.timeout(90000)}).catch(()=>{});

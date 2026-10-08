@@ -94,3 +94,9 @@ User requested removing the identical-passage count, Shared passages only contro
 User prompt (verbatim): “redo the notebook section it should be more clear where its at and the folders in them and stuff like that”
 
 Added a prominent notebook entry with folder/passage totals, folder navigation and active-folder highlighting, breadcrumb and counts, folder creation/renaming/search/export, collapsed saved passages and study outlines, and note indicators. Existing version-1 storage remains compatible. Browser checks covered existing saved data, folder creation, rename, selected-folder persistence, note editing/persistence, folder search, and export of the whole folder despite a filtered view.
+
+## Folder deletion and clear saves
+
+User prompt (verbatim): “how do you delete notebooks and make it easier to know what youre savinf and to where”
+
+Added folder deletion into persistent Recently deleted, restoration including notes/outlines, and save review dialogs showing item, contents, and destination. Users can choose an existing folder or create a new one; passage saves preserve existing notes, and study saves explicitly say when they update a folder’s outline. Verified delete/reload/restore and creating a destination folder while saving.
