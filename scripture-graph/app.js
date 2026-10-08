@@ -747,11 +747,11 @@ function renderNotebook() {
     const title = document.createElement("h4");
     title.textContent = search
       ? "No matching passages"
-      : "This folder is ready for your study";
+      : `No saved passages in “${collection.name}” yet`;
     const text = document.createElement("p");
     text.textContent = search
       ? "Try a verse reference or a word from your notes."
-      : "Select a verse in the graph and choose Review & save passage. Check the destination folder and confirm. To save a comparison with its supporting verses and questions, choose Review & save study.";
+      : `To add a verse, select it in the graph and choose Review & save passage. Pick “${collection.name}” in the save window, then confirm. Your verse and notes will appear here. Use Review & save study to keep a whole comparison.`;
     empty.append(title, text);
     $("notebookEntries").append(empty);
     return;
