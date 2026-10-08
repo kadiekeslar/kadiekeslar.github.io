@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Scripture Graph · Compare & Study</title>
-  <link rel="stylesheet" href="styles.css?v=identity-fix" />
+  <link rel="stylesheet" href="styles.css?v=connection-clarity" />
   <script defer src="https://unpkg.com/cytoscape@3.31.2/dist/cytoscape.min.js"></script>
-  <script defer src="graph-utils.js?v=identity-fix"></script>
-  <script defer src="app.js?v=identity-fix"></script>
+  <script defer src="graph-utils.js?v=connection-clarity"></script>
+  <script defer src="app.js?v=connection-clarity"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -22,9 +22,9 @@
     </header>
     <aside class="left-panel">
       <div id="comparisonPanel" class="hidden">
-        <div class="panel-heading">REFERENCE OVERLAP</div>
-        <div id="comparisonStats"></div>
-        <p class="help-text">Exact reference overlap among retrieved passages, not an exhaustive Bible comparison. Different verse ranges count separately.</p>
+        <div class="panel-heading">CONNECTIONS BETWEEN SEARCHES</div>
+        <div id="comparisonStats"></div><div id="thematicStats" role="status"></div><div id="thematicList"></div>
+        <p class="help-text">Yellow lines connect shared ideas. Shared passages count identical references.</p>
         <label class="toggle-row"><input id="sharedOnly" type="checkbox" /> Shared passages only</label>
         <div id="sharedList"></div>
       </div>
@@ -36,7 +36,7 @@
     <main class="graph-stage">
       <section id="comparisonInsights" class="comparison-insights hidden" aria-label="Comparison findings">
         <div class="insights-header"><div><div class="panel-heading">READ THE CONNECTIONS</div><h2>Similarities & differences</h2></div><div><button id="retryComparisonButton" class="hidden">Retry comparison</button><button id="saveOutlineButton">Save study outline</button><button id="toggleInsightsButton" aria-expanded="true">Collapse</button></div></div>
-        <div id="insightsBody"><p id="insightsStatus" class="help-text" role="status"></p><p id="comparisonOverview"></p><div class="insights-columns"><section><h3>Similarities</h3><div id="similarityCards"></div></section><section><h3>Differences in emphasis</h3><div id="differenceCards"></div></section></div><details class="study-questions"><summary>Questions for your study</summary><ol id="studyQuestions"></ol></details></div>
+        <div id="insightsBody"><p id="insightsStatus" class="help-text" role="status"></p><details class="comparison-overview"><summary>Read the overview</summary><p id="comparisonOverview"></p></details><div class="insights-columns"><section><h3>Similarities</h3><div id="similarityCards"></div></section><section><h3>Differences in emphasis</h3><div id="differenceCards"></div></section></div><details class="study-questions"><summary>Questions for your study</summary><ol id="studyQuestions"></ol></details></div>
       </section>
 
       <div class="graph-controls"><button id="fitButton">Fit graph</button><button id="resetButton">Reset view</button><button id="notebookButton">Study notebook</button><label id="themeLinksControl" class="hidden"><input id="themeLinks" type="checkbox" checked /> Thematic links</label></div>
@@ -48,10 +48,10 @@
       </div>
     </main>
     <aside class="inspector">
-      <div class="panel-heading">INSPECTOR</div><div class="inspector-type" id="detailType">NO SELECTION</div><h1 id="detailLabel">Scripture Graph</h1><p class="detail-summary" id="detailSummary">Search once to explore, or enter a second search to compare.</p>
+      <div class="panel-heading">INSPECTOR</div><div class="inspector-type" id="detailType">NO SELECTION</div><h1 id="detailLabel">Scripture Graph</h1><p class="detail-summary" id="detailSummary">Search once to explore, or enter a second search to compare.</p><details id="detailMore" class="hidden"><summary>Read more</summary><p id="detailFullSummary"></p></details>
       <blockquote id="verseText" class="verse-text hidden"></blockquote>
       <div id="saveControls" class="hidden"><label for="saveCollection">Save to collection</label><select id="saveCollection"></select><button id="saveVerseButton">Save passage</button><p id="saveMessage" role="status"></p></div>
-      <div id="detailMeta" class="detail-meta"></div><div class="connections-header"><span>CONNECTIONS</span><span id="connectionCount">—</span></div><div id="connectionList"><div class="empty-state">No node selected.</div></div>
+      <div id="detailMeta" class="detail-meta"></div><div class="connections-header"><span id="inspectorConnectionsTitle">CONNECTIONS</span><span id="connectionCount">—</span></div><div id="connectionList"><div class="empty-state">No node selected.</div></div>
     </aside>
     <footer class="footerbar"><span>P2 / COMPARE & STUDY</span><span id="footerMessage">READY</span></footer>
   </div>

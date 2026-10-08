@@ -78,3 +78,9 @@ Changed the comparison status and empty finding placeholders to indicate loading
 ## Incorrect Jesus/God result
 
 The user reported a Jesus search displaying Colossians 4:11 (Jesus called Justus), failed AI comparison, and blank numbered questions. Corrected backend identity resolution, diversified retrieved entity references, and added one validation retry. Frontend adds a Retry comparison button, rejects blank questions, and versions assets to avoid mixed cached code.
+
+## Connection clarity
+
+User prompt (verbatim): “right now the left side doesnt date, there were 3 connections like yellow lines but tit still says 0 also there is a lot of info its overwelming also when i click on the yellow line i dont understand why theyre connected i just see that theyre connected and can read both passages”
+
+Added live thematic-link counts separately from identical passage overlap, selectable connection titles, collapsed findings and overview, brief entity summaries, and an explanation-first inspector shared by graph-edge and sidebar selection. Browser checks confirmed three thematic links with zero identical references, hiding links reports zero visible, and selecting a connection shows its explanation before optional passage readings.

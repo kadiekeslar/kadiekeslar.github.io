@@ -239,3 +239,14 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 
 #studyQuestions { color: var(--text); padding-left: 22px; }
 #studyQuestions li { margin: 6px 0; overflow-wrap: anywhere; }
+
+#thematicStats { color: #f1cf75; font-size: 15px; font-weight: 700; margin: 14px 0 8px; }
+.thematic-choice { width: 100%; text-align: left; color: #f1cf75; font-size: 12px; margin: 4px 0; }
+.insight-card > summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.comparison-overview { font-size: 12px; margin: 10px 0; }
+.comparison-overview > summary, #detailMore > summary { cursor: pointer; color: #b5c0c7; }
+.connection-evidence { border-top: 1px solid var(--line); padding: 12px 0; font-size: 13px; line-height: 1.6; }
+.connection-evidence h3 { font-size: 14px; margin: 0 0 8px; }
+.connection-evidence summary { cursor: pointer; color: #b5c0c7; }
+.connection-evidence button { margin-top: 10px; font-size: 11px; }
+#detailFullSummary { font-size: 12px; line-height: 1.6; color: var(--muted); }

@@ -38,6 +38,7 @@ function clearInspector() {
   $('detailSummary').textContent = 'Select a graph node or a passage in the shared list.';
   $('verseText').textContent = ''; $('verseText').classList.add('hidden');
   $('detailMeta').replaceChildren(); $('connectionList').replaceChildren(); $('connectionCount').textContent = '—';
+  $('detailMore').classList.add('hidden'); $('detailMore').open=false; $('inspectorConnectionsTitle').textContent='CONNECTIONS';
   $('saveControls').classList.add('hidden'); $('saveMessage').textContent = '';
 }
 async function fetchGraph(query, signal) {
@@ -122,12 +123,7 @@ function renderGraph(data) {
     ], layout:{name:'cose',animate:false,padding:70,nodeRepulsion:180000,idealEdgeLength:115,numIter:1000}
   });
   cy.on('tap','node',event => selectNode(event.target));
-  cy.on('tap','edge[type="theme-bridge"]',event => {
-    clearInspector(); const e = event.target.data();
-    $('detailType').textContent = 'THEMATIC CONNECTION'; $('detailLabel').textContent = e.label;
-    $('detailSummary').textContent = e.explanation;
-    $('detailMeta').textContent = `${e.sourceName}. Supporting passages: ${event.target.source().data('label')} ↔ ${event.target.target().data('label')}. This is a thematic observation, not a published cross-reference.`;
-  });
+  cy.on('tap','edge[type="theme-bridge"]',event => showThematicConnection(event.target));
   cy.on('tap',event => { if (event.target === cy) cy.elements().removeClass('faded focused'); });
   fitGraph();
 }
@@ -143,7 +139,9 @@ function showNodeDetails(node) {
   $('detailType').textContent = `${d.type.toUpperCase()}${d.membership ? ' / ' + d.membership.toUpperCase() : ''}`;
   $('detailLabel').textContent = d.label;
   const evidence = d.evidence || [d];
-  $('detailSummary').textContent = evidence.map(e => `${e.query ? e.query + ': ' : ''}${e.summary || 'Retrieved passage.'}`).join('\n\n');
+  const summary=evidence.map(e => `${e.query ? e.query + ': ' : ''}${e.summary || 'Retrieved passage.'}`).join('\n\n');
+  $('detailSummary').textContent=summary.length>240 ? summary.slice(0,240)+'…' : summary;
+  $('detailFullSummary').textContent=summary; $('detailMore').classList.toggle('hidden',summary.length<=240);
   if (d.type === 'verse' && d.text) {
     $('verseText').textContent = d.text; $('verseText').classList.remove('hidden');
     selectedPassage = {id:d.reference || d.label, reference:d.reference || d.label, text:d.text, source:d.sourceName || 'Berean Standard Bible', query:currentData?.query || '', note:''};
@@ -156,9 +154,43 @@ function showNodeDetails(node) {
     const other = edge.source().id() === node.id() ? edge.target() : edge.source(); const e = edge.data();
     const button = document.createElement('button'); button.className = 'connection-item';
     button.innerHTML = `<div class="connection-target">${escapeHtml(other.data('label'))}</div><div class="connection-label">${escapeHtml(e.query ? e.query + ' / ' : '')}${escapeHtml(e.label)}</div>${e.explanation ? `<div class="connection-explanation">${e.interpretationMethod === 'text' ? 'Text-based connection' : 'AI explanation'}: ${escapeHtml(e.explanation)}</div>` : ''}`;
-    button.addEventListener('click', () => selectNode(other)); $('connectionList').append(button);
+    button.addEventListener('click', () => e.type==='theme-bridge' ? showThematicConnection(edge) : selectNode(other)); $('connectionList').append(button);
   });
   if (!connections.length) $('connectionList').textContent = 'No visible connections.';
+}
+function updateThematicStats() {
+  if(!cy || !currentData?.comparison) return;
+  const links=cy.edges('[type="theme-bridge"]');
+  const visible=links.filter(e=>e.visible()).length;
+  $('thematicStats').textContent=`${links.length} thematic ${links.length===1?'connection':'connections'}${visible!==links.length?` · ${visible} visible`:''}`;
+  $('thematicList').replaceChildren();
+  links.forEach(link=> {
+    const button=document.createElement('button'); button.className='thematic-choice'; button.textContent=link.data('label');
+    button.addEventListener('click',()=>showThematicConnection(link)); $('thematicList').append(button);
+  });
+}
+function showThematicConnection(link) {
+  if(!link?.length) return;
+  $('sharedOnly').checked=false; $('themeLinks').checked=true;
+  $('filterList').querySelectorAll('input').forEach(i=>{if(i.value==='verse') i.checked=true;});
+  applyFilters();
+  const a=link.source(), b=link.target(), d=link.data();
+  cy.elements().removeClass('faded focused'); cy.elements().not(a.union(b).union(link)).addClass('faded'); a.union(b).addClass('focused');
+  cy.fit(a.union(b).union(link),75);
+  clearInspector();
+  $('detailType').textContent='WHY THESE PASSAGES CONNECT'; $('detailLabel').textContent=d.label;
+  $('detailSummary').textContent=d.explanation;
+  $('detailMeta').textContent=d.interpretationMethod==='text'?'Word-match preview; AI interpretation is still separate.':'AI interpretation of the retrieved passages.';
+  $('inspectorConnectionsTitle').textContent='SUPPORTING PASSAGES'; $('connectionCount').textContent='2';
+  [[a,'A',d.leftFocus],[b,'B',d.rightFocus]].forEach(([n,side,focus])=> {
+    const section=document.createElement('section'); section.className='connection-evidence';
+    const heading=document.createElement('h3'); heading.textContent=`${side} · ${n.data('label')}`; section.append(heading);
+    if(focus) {const reason=document.createElement('p');reason.textContent=focus;section.append(reason);}
+    const reading=document.createElement('details'), label=document.createElement('summary'), quote=document.createElement('p');
+    label.textContent='Read this passage';quote.textContent=n.data('text');reading.append(label,quote);section.append(reading);
+    const open=document.createElement('button');open.textContent=`Open ${n.data('label')}`;open.addEventListener('click',()=>selectNode(n));section.append(open);
+    $('connectionList').append(section);
+  });
 }
 function renderFilters(data) {
   const counts = {};
@@ -172,13 +204,13 @@ function renderComparison(data) {
   $('themeLinksControl').classList.toggle('hidden', !data.comparison);
   if (!data.comparison) return;
   const c = data.comparison;
-  $('comparisonStats').innerHTML = `<div class="comparison-key left-key">A: ${escapeHtml(c.left)} · ${c.leftOnly} unique</div><div class="comparison-key right-key">B: ${escapeHtml(c.right)} · ${c.rightOnly} unique</div><div class="comparison-key shared-key">${c.shared} shared passages</div>`;
+  $('comparisonStats').innerHTML = `<div class="comparison-key left-key">A: ${escapeHtml(c.left)} · ${c.leftOnly+c.shared} passages</div><div class="comparison-key right-key">B: ${escapeHtml(c.right)} · ${c.rightOnly+c.shared} passages</div><div class="comparison-key shared-key">${c.shared} identical passages</div>`;
   data.nodes.filter(n => n.data.membership === 'shared').forEach(({data:d}) => {
     const button = document.createElement('button'); button.className = 'shared-passage'; button.textContent = d.label;
     button.addEventListener('click', () => { $('sharedOnly').checked = false; $('filterList').querySelectorAll('input').forEach(i => { if (i.value === 'verse') i.checked = true; }); applyFilters(); selectNode(cy.getElementById(d.id)); });
     $('sharedList').append(button);
   });
-  if (!c.shared) $('sharedList').textContent = 'No identical references. See the findings above for connections between different passages.';
+  if (!c.shared) $('sharedList').textContent = 'Choose a yellow connection to see why the passages relate.';
 }
 function applyFilters() {
   if (!cy) return;
@@ -187,6 +219,7 @@ function applyFilters() {
   cy.nodes().forEach(n => n.style('display', types.includes(n.data('type')) && (!shared || n.data('membership') === 'shared') ? 'element' : 'none'));
   cy.edges().forEach(e => e.style('display', e.source().visible() && e.target().visible() && (e.data('type') !== 'theme-bridge' || $('themeLinks').checked) ? 'element' : 'none'));
   cy.elements().removeClass('faded focused'); clearInspector(); fitGraph();
+  updateThematicStats();
   $('footerMessage').textContent = shared && !cy.nodes(':visible').length ? 'No shared passages visible. Turn off the shared filter or enable verses.' : `${cy.nodes(':visible').length} visible nodes`;
 }
 function renderCollectionOptions() {
@@ -277,12 +310,15 @@ function renderInsights(report, message, loading = false) {
   $('similarityCards').replaceChildren(); $('differenceCards').replaceChildren();
   for (const [kind,items,id] of [['similarity',report.similarities,'similarityCards'],['difference',report.differences,'differenceCards']]) {
     items.forEach(item=> {
-      const card=document.createElement('article'); card.className='insight-card';
-      const heading=document.createElement('h4'); heading.textContent=item.title; card.append(heading);
+      const card=document.createElement('details'); card.className='insight-card';
+      const heading=document.createElement('summary'); heading.textContent=item.title; card.append(heading);
       if(kind==='similarity') { const p=document.createElement('p'); p.textContent=item.explanation; card.append(p); }
       else for(const [side, text] of [[0,item.left_focus],[1,item.right_focus]]) { const p=document.createElement('p'); const label=document.createElement('strong'); label.className=side===0?'left-key':'right-key'; label.textContent=`${side===0?'A':'B'} · ${side===0?currentData.comparison.left:currentData.comparison.right}: `; p.append(label,document.createTextNode(text)); card.append(p); }
       citationButtons(card,item.left_refs,0); citationButtons(card,item.right_refs,1);
-      const focus=document.createElement('button'); focus.className='focus-evidence'; focus.textContent='Highlight supporting passages'; focus.addEventListener('click',()=>revealReferences([...item.left_refs,...item.right_refs])); card.append(focus); $(id).append(card);
+      const focus=document.createElement('button'); focus.className='focus-evidence'; focus.textContent=kind==='similarity'?'Why are these connected?':'Highlight supporting passages'; focus.addEventListener('click',()=> {
+        const connection=cy.getElementById(`theme-link-${report.similarities.indexOf(item)}`);
+        if(kind==='similarity' && connection.length) showThematicConnection(connection); else revealReferences([...item.left_refs,...item.right_refs]);
+      }); card.append(focus); $(id).append(card);
     });
     if(!items.length) {
       const placeholder=document.createElement('p');
@@ -295,10 +331,10 @@ function renderInsights(report, message, loading = false) {
   cy.edges('[type="theme-bridge"]').remove();
   report.similarities.forEach((item,index)=> {
     const a=findReference(item.left_refs[0],0), b=findReference(item.right_refs[0],1);
-    if(a && b && a.id()!==b.id()) cy.add({data:{id:`theme-link-${index}`,source:a.id(),target:b.id(),type:'theme-bridge',interpretationMethod:report.method,label:item.title,explanation:item.explanation,sourceName:report.method==='ai'?'AI-assisted thematic interpretation':'Text-based theme match'}});
+    if(a && b && a.id()!==b.id()) cy.add({data:{id:`theme-link-${index}`,source:a.id(),target:b.id(),type:'theme-bridge',interpretationMethod:report.method,label:item.title,explanation:item.explanation,leftFocus:item.left_focus || '',rightFocus:item.right_focus || '',sourceName:report.method==='ai'?'AI-assisted thematic interpretation':'Text-based theme match'}});
   });
   cy.edges('[type="theme-bridge"]').style('display',$('themeLinks').checked?'element':'none');
-  $('edgeCount').textContent=cy.edges().length; fitGraph();
+  $('edgeCount').textContent=cy.edges().length; updateThematicStats(); fitGraph();
 }
 async function loadComparison(data, number) {
   const key=JSON.stringify([data.comparison.left,data.comparison.right]);
