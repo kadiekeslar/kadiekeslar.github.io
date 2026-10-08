@@ -22,24 +22,30 @@
     </header>
     <aside class="left-panel">
       <div id="comparisonPanel" class="hidden">
-        <div class="panel-heading">PASSAGE COMPARISON</div>
+        <div class="panel-heading">REFERENCE OVERLAP</div>
         <div id="comparisonStats"></div>
         <p class="help-text">Exact reference overlap among retrieved passages, not an exhaustive Bible comparison. Different verse ranges count separately.</p>
         <label class="toggle-row"><input id="sharedOnly" type="checkbox" /> Shared passages only</label>
         <div id="sharedList"></div>
       </div>
       <div class="panel-heading">FILTER / NODE TYPE</div><div id="filterList"></div>
-      <div class="legend"><div class="panel-heading">RELATIONSHIPS</div><div><span class="line-key solid"></span>CROSS REFERENCE</div><div><span class="line-key dashed"></span>CONTEXT / REFERENCE</div><div><span class="line-key dotted"></span>TOPIC / SUBTHEME</div></div>
+      <div class="legend"><div class="panel-heading">RELATIONSHIPS</div><div><span class="line-key solid"></span>CROSS REFERENCE</div><div><span class="line-key dashed"></span>CONTEXT / REFERENCE</div><div><span class="line-key dotted"></span>TOPIC / SUBTHEME</div><div><span class="line-key thematic"></span>THEMATIC LINK</div></div>
       <div class="stats"><div class="panel-heading">NETWORK</div><div class="stat"><span>NODES</span><strong id="nodeCount">0</strong></div><div class="stat"><span>EDGES</span><strong id="edgeCount">0</strong></div><div class="stat"><span>MODE</span><strong id="queryType">—</strong></div></div>
       <div class="source-block"><div class="panel-heading">DATA SOURCES</div><div id="sourceList">Search to load sources.</div><p class="help-text">Verse text comes from the Berean Standard Bible. Topic categories and explanations may be AI-generated. Chapter context does not mean an entity appears in the selected verse.</p></div>
     </aside>
     <main class="graph-stage">
-      <div class="graph-label">NETWORK / DRAG • ZOOM • SELECT</div>
-      <div class="graph-controls"><button id="fitButton">Fit graph</button><button id="resetButton">Reset view</button><button id="notebookButton">Study notebook</button></div>
+      <section id="comparisonInsights" class="comparison-insights hidden" aria-label="Comparison findings">
+        <div class="insights-header"><div><div class="panel-heading">READ THE CONNECTIONS</div><h2>Similarities & differences</h2></div><div><button id="saveOutlineButton">Save study outline</button><button id="toggleInsightsButton" aria-expanded="true">Collapse</button></div></div>
+        <div id="insightsBody"><p id="insightsStatus" class="help-text" role="status"></p><p id="comparisonOverview"></p><div class="insights-columns"><section><h3>Similarities</h3><div id="similarityCards"></div></section><section><h3>Differences in emphasis</h3><div id="differenceCards"></div></section></div><details class="study-questions"><summary>Questions for your study</summary><ol id="studyQuestions"></ol></details></div>
+      </section>
+
+      <div class="graph-controls"><button id="fitButton">Fit graph</button><button id="resetButton">Reset view</button><button id="notebookButton">Study notebook</button><label id="themeLinksControl" class="hidden"><input id="themeLinks" type="checkbox" checked /> Thematic links</label></div>
+      <div class="graph-canvas"><div class="graph-label">NETWORK / DRAG • ZOOM • SELECT</div>
       <div id="cy" aria-label="Interactive Scripture graph"></div>
-      <div id="emptyState" class="empty-stage"><div class="empty-kicker">SEARCH · COMPARE · COLLECT</div><h1>Follow a connection.</h1><p>Explore passages, compare searches, and build your own study notebook.</p><div class="examples"><button data-query="fear" data-compare="hope">fear ↔ hope</button><button data-query="Romans 8:28" data-compare="James 1:12">compare verses</button><button data-query="Moses">Moses</button></div></div>
+      <div id="emptyState" class="empty-stage"><div class="empty-kicker">SEARCH · COMPARE · COLLECT</div><h1>Follow a connection.</h1><p>Discover shared ideas, see different emphases, and turn connections into a study.</p><div class="examples"><button data-query="fear" data-compare="hope">fear ↔ hope</button><button data-query="Romans 8:28" data-compare="James 1:12">compare verses</button><button data-query="Moses">Moses</button></div></div>
       <div id="loadingState" class="loading-stage hidden"><div class="loader"></div><div id="loadingMessage" role="status">RETRIEVING + ORGANIZING SCRIPTURE</div><button id="cancelButton">Cancel search</button></div>
       <div id="errorBanner" class="error-banner hidden" role="alert"><span id="errorMessage"></span><button id="retryButton">Retry</button></div>
+      </div>
     </main>
     <aside class="inspector">
       <div class="panel-heading">INSPECTOR</div><div class="inspector-type" id="detailType">NO SELECTION</div><h1 id="detailLabel">Scripture Graph</h1><p class="detail-summary" id="detailSummary">Search once to explore, or enter a second search to compare.</p>

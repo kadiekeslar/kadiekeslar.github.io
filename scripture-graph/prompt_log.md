@@ -52,3 +52,19 @@ Additional user prompt, verbatim:
 > are you able to edit the files for me
 
 Codex applied the replacement frontend/backend files to repository copies, updated the portfolio description, checked that both repositories were current with main, reran the 15 automated checks, and prepared commits for the authorized updates. This does not count as student-written code or establish eight hours of student work. Deployment verification follows the push.
+
+## Explained comparison and speed continuation
+
+User prompts, verbatim:
+
+> instead of only crossing reference if they share an exact passage, make it more clear on the similarites and difeerences not just make the user read through all of them and add anything to the app that you thing would be super cool and useful
+
+> also why is it so slow every search
+
+Codex implemented grounded thematic comparison, differences in emphasis, clickable supporting passages, distinct thematic graph links, and saved study outlines with questions. Speed changes include parallel passage retrieval, ten-minute process-local result caching with duplicate-request coalescing, common-topic lexical fast paths, and final AI explanations loading after the graph is ready.
+
+A real debugging discovery: the original complete-Bible reader expected each chapter to directly contain `number` and `content`. The public API actually wraps them in `chapter`. This left the topic corpus empty. Codex inspected the real public dataset, corrected the reader, and added a nested-format regression check. Another AI tooling mistake in this session was mismatching a temporary script's heredoc terminator, causing the new functions not to be applied; the failing checks exposed it, and the scripts were repaired before testing again.
+
+Local observations: fear/hope graph loaded in about 2.1 seconds; a first local Romans 8:28 retrieval took about 0.93 seconds, and cached repeat requests about 0.001 seconds. These are local measurements, not guarantees for the public service. The local AI-unavailable fallback was tested without adding or accessing API secrets; the live configured backend is used for deployment verification.
+
+These are AI-generated changes. Student manual code contributions, actual focused work time, and personal interpretation still need to be added honestly.

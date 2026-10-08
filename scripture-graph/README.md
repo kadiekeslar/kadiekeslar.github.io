@@ -40,7 +40,7 @@ Comparison counts measure exact displayed reference matches among the returned p
 - Backend `bible_data.py`: retrieves Bible data, resolves verse ranges, and performs lexical search.
 - Backend `ai_service.py`: existing server-side OpenAI calls; its model is configured with `OPENAI_MODEL`.
 
-Comparison happens in the frontend, using two requests to the existing `/explore` route. Requests are sequential to support a single-worker backend. A 150-second overall timeout, cancellation, and a request number prevent indefinite loading and stale responses. The browser caches up to 20 successful searches per session.
+Comparison happens in the frontend, using two requests to the existing `/explore` route. The two search requests run together, and the backend batches independent passage retrieval in parallel. A 150-second overall timeout, cancellation, and a request number prevent indefinite loading and stale responses. The browser caches up to 20 successful searches per session.
 
 ### Run locally
 
@@ -95,3 +95,17 @@ AI-generated explanations and topic categories are labeled and should be checked
 - [Backend source](https://github.com/kadiekeslar/scripture-graph-backend)
 
 GitHub Pages hosts the frontend and Render hosts the backend. A new commit may take a few minutes to appear in the public deployment; verify that the page says Compare & Study and the backend version says compare-study-p2.
+
+### Explained comparisons and faster search (P2 continuation)
+
+Comparisons now include an overview, thematic similarities, and side-by-side differences in emphasis, each with clickable evidence from both retrieved selections. Gold dashed links connect supporting passages even when they have different references. These thematic links are labeled separately from published cross-references. Highlighting evidence focuses the graph on the cited passages.
+
+**Save study outline** creates a notebook collection with the findings, supporting Scripture, and study questions. Its Markdown export includes the explanation and questions alongside your notes. Existing saved collections remain compatible.
+
+A text-based preview appears immediately and is replaced by AI-assisted interpretation when available. Word-family matches are explicitly labeled as a preview: matching language does not guarantee the same theological meaning. Differences concern the selected passages, not exhaustive claims about the entire Bible. The backend verifies every comparison citation belongs to the respective retrieved selection; verification of citation membership does not automatically prove the interpretation is correct.
+
+Search optimizations include parallel passage/entity retrieval, ten-minute process-local result caching, coalescing duplicate concurrent requests, cached query interpretation, and graph-first/background-explanation delivery. Eight common topics (fear, hope, faith, love, anxiety, forgiveness, suffering, prayer) use transparent word-family retrieval without an initial AI classification call. More complex questions still require AI classification. The complete translation reader now handles the API's nested chapter format correctly; a lock prevents duplicate first-time full-Bible downloads.
+
+Endpoints: `GET /explore?fast=1&q=...` returns retrieval before final AI explanation; `GET /explain?q=...` enriches that retrieved graph; `POST /compare` accepts JSON `{"left":"fear","right":"hope"}` and returns evidence-checked findings. The frontend wakes `/health` when opened. Caches are in memory and reset on service restart. Render free-tier cold starts can still add delay; these code changes do not make a sleeping service permanently available.
+
+Run frontend checks with `node --test scripture-graph/tests/graph.test.cjs` from the frontend repo. Run backend checks with `python -m unittest discover -s tests` from the backend repo, with its dependencies installed.
