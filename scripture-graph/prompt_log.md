@@ -2,7 +2,7 @@
 
 ## Project background
 
-P2 builds on the HW4 Scripture Graph. The prompts below record the new comparison, notebook, performance, and interface work. Partial quotations are labeled as excerpts.
+P2 builds on the HW4 Scripture Graph. The 15 prompts below record the new comparison, notebook, performance, interface, and documentation work.
 
 ## Which tool for which job
 
@@ -15,78 +15,137 @@ P2 builds on the HW4 Scripture Graph. The prompts below record the new compariso
 
 ## Development process and actual prompts
 
-### 1. Initial P2 review — verbatim excerpt
+The numbered quotations below are the actual prompts. Original spelling is preserved; blockquote markers are added for readability. Development notes appear separately after the prompts.
 
-> you can find it here in scripture graph and the frontend and backend code is all there as well, let me know what i should add to it to make it full credit for p2
+### 1. Initial P2 review
 
-**Outcome:** Reviewed the provided rubric and public repositories; proposed comparison and a persistent notebook as the P2 transformation.
+> here is the project prompt for p2, i am going to build off my hw4 which you can find here [**kadiekeslar.github.io**](https://github.com/kadiekeslar/kadiekeslar.github.io/tree/main)
+>
+> # scripture-graph this is the front end and here is the back end[kadiekeslar](https://github.com/kadiekeslar)
+>
+> 1. [**scripture-graph-backend**](https://github.com/kadiekeslar/scripture-graph-backend)**&#xA0;&#x20;**[https://kadiekeslar.github.io/](https://kadiekeslar.github.io/) you can find it here in scripture graph and the frontend and backend code is all there as well, let me know what i should add to it to make it full credit for p2
 
 ### 2. Implementation and scope
 
 > okay i dont care about the mobile part but do everything else and tell me what code to change and where
 
-**Outcome:** Built the first replacement bundle; mobile was excluded by user choice.
-
 ### 3. Apply the edits
 
 > are you able to edit the files for me
 
-**Outcome:** Applied changes to the two named repositories, tested, committed, pushed, and verified deployment.
+### 4. Repository access and permissions
 
-### 4. Compare meaning
+> do you only have access to those or do you have access to my whole github even my private stuff
+
+### 5. Compare meaning
 
 > instead of only crossing reference if they share an exact passage, make it more clear on the similarites and difeerences not just make the user read through all of them and add anything to the app that you thing would be super cool and useful
 
-**Outcome:** Added cited thematic similarities, differences in emphasis, distinct yellow graph links, questions, and saved outlines.
-
-### 5. Search performance
+### 6. Search performance
 
 > also why is it so slow every search
 
-**Outcome:** Parallelized passage retrieval, cached results, and loaded optional AI interpretation after the graph. Corrected nested full-Bible chapter parsing.
-
-### 6. Loading feedback
+### 7. Loading feedback
 
 > while similarites are loading add loading instead of just nothing found
 
-**Outcome:** Added explicit pending states, instead of premature no-findings messages.
-
-### 7. Wrong Jesus/God result — verbatim excerpt from the pasted output
+### 8. Wrong Jesus/God result
 
 > ext-based preview · AI comparison is unavailable right now. You can still explore and save this study.
+>
+> Compare 1 passages from A with 12 from B. The preview below highlights shared language and differences in these retrieved selections; the AI explanation can also connect ideas expressed with different words.
+>
+> ### Similarities
+>
+> No supported connection identified in this selection yet.
+>
+> ### Differences in emphasis
+>
+> #### Different passages to begin with
+>
+> **A · Jesus:&#x20;**“Jesus, who is called Justus, also sends greetings. These are the only Jews among my fellow workers for the kingdom of God, and they have been a comfort to me.”
+>
+> **B · God:&#x20;**“[1] In the beginning God created the heavens and the earth. [2] Now the earth was formless and void, and darkness was over the surface of the deep. And the Spirit of God was hovering over the surface of the wat…”
+>
+> A · Colossians 4:11
+>
+> B · Genesis 1:1-12
+>
+> Highlight supporting passages
+>
+> Questions for your study
+>
+> 1.
+> 2.
+> 3.
+>
+> Fit graphReset viewStudy notebook this is what is says
 
-**Outcome:** The pasted output also showed Colossians 4:11 for Jesus. Reproduced the failure, resolved plain Jesus to Jesus Christ rather than Justus, spread references across the dataset, and added validation retry and nonblank-question checks.
-
-### 8. Counts, clutter, and explanations
+### 9. Counts, clutter, and explanations
 
 > right now the left side doesnt date, there were 3 connections like yellow lines but tit still says 0 also there is a lot of info its overwelming also when i click on the yellow line i dont understand why theyre connected i just see that theyre connected and can read both passages
 
-**Outcome:** Separated thematic counts from exact-reference overlap, collapsed details, and put pair-specific reasoning before optional passage readings.
-
-### 9. Remove sidebar clutter
+### 10. Remove sidebar clutter
 
 > Shared passages only
 > Choose a yellow connection to see why the passages relate. get rid of this 0 identical passages and this
 
-**Outcome:** Removed the shared-only control, zero identical-reference display, and extra instruction.
-
-### 10. Notebook folders
+### 11. Notebook folders
 
 > redo the notebook section it should be more clear where its at and the folders in them and stuff like that
 
-**Outcome:** Added a prominent notebook entry, folder list, breadcrumb, counts, rename/search/export, collapsed entries, and active-folder persistence.
-
-### 11. Delete and save destinations
+### 12. Delete and save destinations
 
 > how do you delete notebooks and make it easier to know what youre savinf and to where
 
-**Outcome:** Added recoverable folder deletion, restore, and reviews showing saved contents and destination. Verified notes survived deletion/restoration and duplicate study saves.
+### 13. Readability and documentation
 
-### 12. Readability/documentation — verbatim excerpt
+>  i need everything on here **Prompt log** - titled `prompt_log.txt` or `prompt_log.md`, and located in the same folder as your README. It must list which AI model(s)/tools you used, document the development process from start to finish (including which parts of the code were written or substantially modified by you), and include important, non-trivial prompts **verbatim** rather than AI-written summaries of them. As a whole, this file should make it obvious that you invested roughly 8 hours of work. As a very rough gauge, an 8-hour project that starts from a clear plan and then iterates from there might produce somewhere in the range of 15 to 40 prompts worth logging. Treat that as a rough estimate rather than a target, since we'd rather have a handful of well-constructed prompts over an artificially stretched list.
+>
+> Two specific things we want to see in this file:
+>
+> - **Which tool for which job.** A sentence or two on which model(s) or tool(s) you used for which parts of the work, and why. Brainstorming, writing code, and debugging are often best served by different tools, and choosing deliberately is a skill we want you practicing.
+> - **One place AI got it wrong.** Describe at least one instance where a tool was confidently incorrect, proposed something that couldn't work, or introduced a bug it then couldn't find, and what you did about it. One short paragraph is plenty. These observations are what we use to build the class's shared best practices, and they tend to make for good discussion in your evaluation. edit these **README.md** - must be named `README.md` and located at the repository root (or inside the project folder if you placed the project in your portfolio repo). The README should explain: what the project does, how to use it, which features you are most proud of, how to run it locally, and how secrets (if any) are handled. (Note that even if you deploy in github pages, this should be a new README for just this project.) **Write this yourself,** in your own words, and make sure it actually covers the items listed above. It must also **briefly summarize how you used AI on this project,** along with any citations that are relevant (for example, a model or tool that produced a substantial portion of the code, or an outside source you adapted). We are placing more weight on this than we did on earlier assignments. If you want to include AI-generated documentation as well, that is fine, but put it at the bottom of the README under a heading that clearly labels it as AI-generated.*Note: We expect you to understand and be able to explain what each part of the code is responsible for, and you'll need to write or substantially modify at least some of your code, so be careful not to just vibe-code until it's too complicated for you to grasp. As you work, ask yourself this: Would you be comfortable discussing this project in an in-person technical job interview, without notes? If not, begin investing effort in understanding the code the AI has written for you, or focus on simplifying the project until you feel you understand and can discuss it. make sure my code is super readible and add comments enough so i understand it and mkae up some part that i did*
 
-> make sure my code is super readible and add comments enough so i understand it
+### 14. Final README and notebook wording revision
 
-**Outcome:** Organized this factual process log, rebuilt outdated documentation, formatted source, added explanatory comments and a code walkthrough. Student-authored README wording and independent code contributions remain to be supplied.
+> do the readme for me make it sound human like and just make a small student like change and take away anything in the read me thats like  This is a P2 record assembled by Codex from this conversation. It separates the reused HW4 foundation from new P2 work. Complete prompts below are copied verbatim; any partial quotation is explicitly labeled as an excerpt. Process notes are AI-written factual summaries, not additional prompts.
+
+### 15. README tone revision
+
+> no do it just write it in my tone
+
+## Development notes — AI-written
+
+**Prompt 1:** Reviewed the provided rubric and public repositories; proposed comparison and a persistent notebook as the P2 transformation.
+
+**Prompt 2:** Built the first replacement bundle; mobile was excluded by user choice.
+
+**Prompt 3:** Applied changes to the two named repositories, tested, committed, pushed, and verified deployment.
+
+**Prompt 4:** Explained that work was scoped to the two named project repositories. Other private repositories were not inspected; broader credential permissions were not tested.
+
+**Prompt 5:** Added cited thematic similarities, differences in emphasis, distinct yellow graph links, questions, and saved outlines.
+
+**Prompt 6:** Parallelized passage retrieval, cached results, and loaded optional AI interpretation after the graph. Corrected nested full-Bible chapter parsing.
+
+**Prompt 7:** Added explicit pending states, instead of premature no-findings messages.
+
+**Prompt 8:** The pasted output also showed Colossians 4:11 for Jesus. Reproduced the failure, resolved plain Jesus to Jesus Christ rather than Justus, spread references across the dataset, and added validation retry and nonblank-question checks.
+
+**Prompt 9:** Separated thematic counts from exact-reference overlap, collapsed details, and put pair-specific reasoning before optional passage readings.
+
+**Prompt 10:** Removed the shared-only control, zero identical-reference display, and extra instruction.
+
+**Prompt 11:** Added a prominent notebook entry, folder list, breadcrumb, counts, rename/search/export, collapsed entries, and active-folder persistence.
+
+**Prompt 12:** Added recoverable folder deletion, restore, and reviews showing saved contents and destination. Verified notes survived deletion/restoration and duplicate study saves.
+
+**Prompt 13:** Organized this factual process log, rebuilt outdated documentation, formatted source, added explanatory comments and a code walkthrough. Student-authored README wording and independent code contributions remain to be supplied.
+
+**Prompt 14:** Codex rewrote the README in plain language, removed checklist placeholders and the lengthy introductory process note, and kept a brief AI credit. In `app.js` → `renderNotebook`, Codex changed the empty-folder heading and instruction to name the selected folder explicitly. This is a small AI-written interface copy change requested by the student, not an independent student-authored code change.
+
+**Prompt 15:** Codex revised the README into a more casual, first-person draft based on the student’s expressed goals and feedback. The AI credit remains; this revision does not establish student authorship of the prose or code.
 
 ## One place AI got it wrong
 
@@ -126,18 +185,3 @@ Representative actual commits include `3ebc30c` / `5fe4388` (initial frontend/ba
 
 Write the README's personal explanation in your own words, record actual independent code changes, and supply real focused-work sessions. Review `CODE_GUIDE.md` and practice explaining the request flow, graph identity, grounded comparisons, browser storage, and secret handling. Record the demo and submit the course form yourself; this log does not claim those are completed.
 
-## Final README and notebook wording revision
-
-Verbatim prompt:
-
-> do the readme for me make it sound human like and just make a small student like change and take away anything in the read me thats like  This is a P2 record assembled by Codex from this conversation. It separates the reused HW4 foundation from new P2 work. Complete prompts below are copied verbatim; any partial quotation is explicitly labeled as an excerpt. Process notes are AI-written factual summaries, not additional prompts.
-
-**Outcome:** Codex rewrote the README in plain language, removed checklist placeholders and the lengthy introductory process note, and kept a brief AI credit. In `app.js` → `renderNotebook`, Codex changed the empty-folder heading and instruction to name the selected folder explicitly. This is a small AI-written interface copy change requested by the student, not an independent student-authored code change.
-
-## README tone revision
-
-Verbatim prompt:
-
-> no do it just write it in my tone
-
-**Outcome:** Codex revised the README into a more casual, first-person draft based on the student’s expressed goals and feedback. The AI credit remains; this revision does not establish student authorship of the prose or code.
