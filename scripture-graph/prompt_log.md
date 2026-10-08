@@ -2,7 +2,7 @@
 
 ## Project background
 
-P2 builds on the HW4 Scripture Graph. The 13 prompts below record the new comparison, notebook, performance, and interface work.
+P2 builds on the HW4 Scripture Graph. The 15 prompts below record the comparison, notebook, performance, interface, and project-learning work.
 
 ## Which tool for which job
 
@@ -98,7 +98,17 @@ These are the original app-development prompts, with spelling preserved.
 
 > how do you delete notebooks and make it easier to know what youre savinf and to where
 
-### 13. Notebook code readability
+### 13. Explain the personal code contribution
+
+> We want to see evidence of meaningful learning and that you engaged with the code yourself. It doesn't have to be clever: editing content, reorganizing a section, or pointing the code at a different file all count, as long as they show you understood the structure well enough to know where to go and why.
+>
+> What part of the code did you most substantially write or edit yourself?  (e.g. "I wrote a function in my backend that returns a list of currently registered users. All of that code was written by me" or "I modified the HTML for my app to align all the images in a grid instead of in the less-readable column arrangement I got from AI.")
+
+### 14. Record original prompts
+
+> and it says it should be an ai summary but the actual prompts
+
+### 15. Notebook code readability
 
 >  this code is also not super readable or student like help me make those changes and seperate them with comments and use good dtyle then also make the notebook section especially student like and add lots of comments
 
