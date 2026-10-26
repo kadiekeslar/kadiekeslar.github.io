@@ -1,118 +1,198 @@
-# Opportunity Radar · Stage 1
+# Opportunity Radar
 
-A job and internship discovery product for college students. This commit builds **Stage 1 only**, as requested: React frontend, FastAPI backend, persistent SQLite and ChromaDB, and the basic job model. Stop here to verify the foundation before connecting the first real source.
+**Student writing checkpoint:** HW6 explicitly asks you to write the first four README sections yourself. Replace the prompts below with your own explanation before submitting. The technical documentation underneath is labeled AI-generated; it is not presented as your writing. The prompt log records the actual development conversation and does not claim an invented work duration.
 
-## What works now
+## 1. What I built and why — write this yourself
 
-- Responsive dashboard, database connection indicator, current/new/closed views, exact filters, pagination, and job details with original source links.
-- Read-only job API and database-backed counts. A fresh database contains **zero jobs**. No old datasets, invented listings, match scores, or simulated refreshes.
-- Job lifecycle fields, source identity uniqueness, discovery timestamps, original URL, deadline, content hash, and verification timestamps.
-- Persistent Chroma collection initialized on API startup. **Embedding and semantic search are Stage 4**, not implemented yet.
-- Closed jobs are excluded from the default feed. A job is labeled verified open only when it is not closed and was verified within the past 24 hours. Stale records say they need a recheck. The 24-hour cutoff is a product policy, not a guarantee the employer has not closed the posting since verification.
+Explain in 1–2 sentences what Opportunity Radar does and why you chose it.
 
-## Architecture and important files
+## 2. My data — write this yourself
 
-```text
-opportunity-radar/
-  index.html, assets/       built public frontend for GitHub Pages
-  frontend/
-    src/main.jsx           React dashboard and API calls
-    src/styles.css         responsive visual design
-    vite.config.js         build with /opportunity-radar/ base path
-    package-lock.json      frontend dependency lock
-  backend/
-    main.py                FastAPI app, startup, health, jobs, statistics
-    database.py            SQLAlchemy job model and database sessions
-    schemas.py             API shape and verified-open calculation
-    config.py              environment and project-relative storage paths
-    tests/                 isolated temporary databases; no real jobs seeded
-  data/                    ignored SQLite data (created on startup)
-  chroma_store/            ignored persistent vectors (created on startup)
-  requirements.txt         direct Python dependencies
-  requirements.lock.txt    exact tested Python environment
-  .env.example             backend configuration, no secrets
-```
+Explain the source, item size/chunking choice, metadata, and actual loaded count. Verified facts are provided below to help you check your explanation.
 
-React + Vite keeps a static frontend compatible with this repository’s other folder-based projects. FastAPI handles structured data through SQLAlchemy so PostgreSQL can replace SQLite later. Chroma stays on the backend. The browser never reads database files. There is no need for a paid service or API key in Stage 1.
+## 3. Adding and searching — write this yourself
 
-## Run locally
+Describe how a user adds a public posting while the app runs, searches it immediately, and uses the retrieved evidence to decide what to do next.
 
-Use **Python 3.12** (tested) and **Node 22.12+ or 24**. In a terminal:
+## 4. My two semantic examples — write this yourself
+
+Run the two tested queries below, inspect the retrieved passages, explain why exact important query words would miss those passages, and describe the result in your own words. Demonstrate at least one in your video.
+
+---
+
+## AI-generated technical documentation
+
+This section was written with OpenAI Codex. Review it against the application. The frontend layout was informed by [Google Careers](https://www.google.com/about/careers/applications/jobs/results/), while Opportunity Radar has its own identity and is not affiliated with Google.
+
+Opportunity Radar collects real public company postings, tracks their lifecycle, and uses persistent ChromaDB to search descriptions by meaning. Resume recommendations combine retrieved evidence with conservative, separate eligibility checks and a manual application tracker. It does more than print nearest neighbors: it shows supported resume/posting connections, prioritizes actions, excludes closed/stale recommendations, and tracks decisions over time. No hosted LLM or secret API key is needed.
+
+### Run it
+
+Tested with **Python 3.12** and **Node 24**. Use Python 3.12 and Node 22.12+ or 24. From the repository root:
 
 ```sh
-git clone https://github.com/kadiekeslar/kadiekeslar.github.io.git
-cd kadiekeslar.github.io/opportunity-radar
+cd opportunity-radar
 python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.lock.txt
 cp .env.example .env
-python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-In another terminal, from the same `opportunity-radar` folder:
-
-```sh
 cd frontend
 npm ci
+cd ..
+./start.sh
+```
+
+Open **http://127.0.0.1:5173/opportunity-radar/**. Make an account with an email-format identifier and a password of at least 10 characters. Email is not contacted or verified. Use a unique password; password reset and email integration are not implemented.
+
+The API starts at **http://127.0.0.1:8000**, with interactive documentation at **http://127.0.0.1:8000/docs**. The first background import downloads an approximately **79 MB** embedding model and populates the database. The initial import/index took about 2.5 minutes on the development machine. The site can display imported postings before every vector is ready; semantic results expand as indexing completes. Later refreshes only embed jobs with changed text or missing index state.
+
+`./start.sh` runs the API and frontend; Ctrl+C stops both. The API runs a dedicated refresh thread at startup and every four hours, independent of page requests. It shares the API's Chroma client to avoid multiple processes writing an embedded index. Run only **one API worker/process** with this local-storage architecture. To disable this scheduler, set `AUTO_REFRESH=0` in `.env` and restart the API.
+
+To run the services separately:
+
+```sh
+# Terminal 1, from opportunity-radar/
+source .venv/bin/activate
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+# Terminal 2, from opportunity-radar/frontend/
 npm run dev
 ```
 
-Open **http://127.0.0.1:5173/opportunity-radar/**. The development frontend defaults to `http://127.0.0.1:8000`. The footer should say **Backend connected**. Counts should be **0**, and the feed should explain that the first source is not yet connected.
+### Refresh without the website
 
-API documentation: **http://127.0.0.1:8000/docs**. Quit a server with Ctrl+C. Restarting the API preserves both databases.
-
-## Small verification test
-
-With the backend running:
+With the API stopped, the same collection pipeline can run independently:
 
 ```sh
-curl http://127.0.0.1:8000/health
-curl http://127.0.0.1:8000/jobs
+source .venv/bin/activate
+python refresh_jobs.py
+python refresh_jobs.py --limit 3
+python refresh_jobs.py --loop --hours 4
 ```
 
-Expect `status: "ok"`, both databases connected, zero embedded jobs and connected sources, and `{"items":[],"total":0}`. No fake jobs should appear. A missing job ID returns 404.
+`--limit` selects complete company boards, not a truncated subset of each board. `--no-embed` imports structured jobs only. A failed index remains pending and retries on the next refresh. Provider errors are logged and preserve earlier records. Empty/incomplete responses or a drop exceeding half of an established board do not automatically mass-close jobs; investigate before deliberately using `--allow-large-drop`.
 
-Run the automated checks from `opportunity-radar/` with the virtual environment active:
+For cron or a hosting scheduler, disable the API's embedded scheduler and run the command against persistent storage when the embedded Chroma client is not in use by another process. A production expansion to multiple processes should use a dedicated Chroma server rather than share an embedded index across processes.
+
+### Corpus and persistence
+
+The October 26, 2026 import retrieved **647 real postings**, indexed as **5,065 chunks**:
+
+| Company | Public source | Postings observed |
+| --- | --- | ---: |
+| Figma | Greenhouse | 140 |
+| Duolingo | Greenhouse | 60 |
+| Notion | Ashby | 140 |
+| Palantir | Lever, paginated | 307 |
+
+Counts change with the employers' boards. This corpus includes experienced jobs as well as student roles; use the student filter to narrow it. That filter uses title signals and does not certify eligibility.
+
+`companies.json` contains provider names and public board identifiers. No ATS secret keys or private employer APIs are used. The provider modules normalize descriptions, original URLs, locations, and reliable dates. Greenhouse's updated timestamp is not mislabeled as the posting date. Missing dates and deadlines remain unknown.
+
+One vector item is a **maximum 220-token passage**, with a 30-token overlap. Chunking uses the actual model tokenizer, not character-count guesses, so a long posting is not silently truncated to its first paragraph. Metadata includes `job_id` and company. Full original plain-text descriptions stay in SQL; the vector result identifies the exact source passage. One SQL job may have several vector chunks, but search returns each job once.
+
+- Vector database: ChromaDB `PersistentClient`, persisted in `chroma_store/`.
+- Embedding model: local ONNX **all-MiniLM-L6-v2**, 384 dimensions, cosine distance. Model files are cached in `data/models/` on first use.
+- Structured database: SQLite via SQLAlchemy, in `data/opportunities.sqlite3`.
+- No resume text or job text is sent to an external embedding/LLM API. Provider HTTP requests fetch public postings only. Chroma/library operational telemetry is separate from content processing.
+- Raw job data, both databases, models, passwords, tokens, and resumes are **not committed to GitHub**. They are regenerated by running the importer, or created by users at runtime.
+- Reproduce the corpus using `python refresh_jobs.py`; there is no old frozen dataset to download from the repository.
+
+On refresh: a first appearance becomes NEW; an existing listing becomes OPEN and updates verification; a disappeared listing becomes CLOSED, retaining its original record and closing timestamp. Reopened postings retain their original first-seen time and gain a REOPENED event. NEW is a lifecycle flag, while “discovered today” uses midnight UTC. `job_events` preserves lifecycle history for later recruiting-cycle analysis. Source identity plus canonical original URLs avoid exact duplicates; fuzzy cross-provider deduplication is not implemented.
+
+### Runtime additions and useful retrieval
+
+1. Sign in, choose **Add a role**, and paste a public posting's title, company, original URL, and description (at least 80 characters).
+2. The API saves it, embeds its useful text, and returns only after it is searchable. Reusing an original URL returns the existing record.
+3. Search with a natural-language description. Results include the matching source passage and a heuristic similarity category, never a probability of getting hired.
+4. Open a job, review the evidence and source freshness, save it, and track its status.
+5. Upload a text/PDF resume under **My profile** and choose **For you** for resume-based recommendations with exact quotes from both texts.
+
+User additions are explicitly public postings in this backend instance, not private notes. They are labeled **Needs verification**, and they cannot appear in normal resume recommendations until an official source verifies them. They are still immediately searchable, satisfying runtime addition without inventing employer verification.
+
+Search combines vector retrieval with SQL filters for status, company, location, employment type, discovery age, and early-career title signals. Up to 100 distinct semantic results are returned; exact browse supports pagination across the corpus. A cosine-distance gate of 0.78 suppresses sufficiently distant results. Similarity labels use heuristic cutoffs (excellent <0.30, strong <0.48, possible <0.65, otherwise weak); these are imperfect and not calibrated hiring likelihoods. Some unrelated queries yield no matches, while others still produce weak or spurious results. Review the retrieved passage rather than trusting a label.
+
+### Two measured semantic examples
+
+Tested against the imported corpus on October 26, 2026. The returned job is the top result, not a hard-coded special case. Different future board contents can change rankings.
+
+| Query | Observed top result | Why exact words miss the retrieved passage |
+| --- | --- | --- |
+| `help learners master a foreign tongue` | Duolingo — **Senior Learning Designer, Indian Languages** (cosine distance 0.4028) | The retrieved passage describes linguistics and pedagogically sound courses; it does not use the important query terms “learners,” “master,” “foreign,” or “tongue.” |
+| `defend against hackers trying to break in` | Figma — **Security Engineer** (cosine distance 0.4906) | The passage describes detecting threats and auditing software, without the important query terms “defend,” “hackers,” or “break in.” |
+
+Supporting excerpts:
+
+- Duolingo: “identify learning challenges and design accurate, pedagogically sound courses.” [Original posting](https://careers.duolingo.com/jobs/8722385002)
+- Figma: “Build platforms and tooling to detect and respond to infrastructure and corporate security threats.” [Original posting](https://boards.greenhouse.io/figma/jobs/5829751004) (Use the application’s original link if the employer replaces this posting.)
+
+These illustrate synonym/concept retrieval, not a claim that keyword search could never find the complete job through other words. Earlier observational-research probes returned poor matches, and the prompt log records that limitation. The code does not special-case either successful query.
+
+### Match, eligibility, and decisions
+
+Resume uploads support PDF/text up to 5 MB, 20 PDF pages, and 60,000 extracted characters. Scanned/image-only PDFs require OCR outside this app. Sections are detected from headings; originals are not invented or rewritten. Only extracted text and its vectors are retained, not the uploaded PDF binary. Users can delete resume text and vectors.
+
+Matching queries up to the first 12 token chunks of a resume against freshly verified, non-closed jobs. Long resumes may therefore have uncovered later content. The UI shows exact passages from the resume and job and states that semantic proximity is a connection, not proof of qualifications. It can surface other role families beyond the user's preferred titles.
+
+Eligibility extraction supports only explicit years-of-experience requirements, unambiguous month/year graduation windows, and explicit no-sponsorship statements. It reports **Unknown** for missing profile values or unsupported requirements. Degree, location/work eligibility, and other nuanced requirements require review and are explicitly called out. “Likely eligible” means the recognized checks passed, not that every employer condition has been evaluated.
+
+- APPLY NOW: excellent/strong semantic match + recognized eligibility checks passed + verified within 24 hours.
+- SAVE: interesting but eligibility, freshness, or relevance needs review.
+- SKIP: a recognized eligibility failure or weak match.
+- PREPARE: a separately stored future opening backed by a source or labeled historical prediction.
+
+No future opening dates or historical predictions have been fabricated. The opening-soon model/UI distinguish CONFIRMED from EXPECTED, but the initial table is empty. Historical forecasting, email integration, and sophisticated requirement extraction remain future work.
+
+Application statuses: Saved, Applied, Interview, Rejected, Offer, Withdrawn. Saved/applied dates, notes, and status persist per account. Saving an applied job does not regress its status. Profile and resume data are scoped to the authenticated user. Passwords use salted scrypt hashes; bearer tokens are random, hashed in SQL, expire after seven days, and are stored in browser session storage per backend origin. Basic in-process authentication throttling is included. There is no account recovery, email verification, multi-instance rate limiting, or production account administration yet.
+
+### Public frontend and backend hosting
+
+Frontend: **https://kadiekeslar.github.io/opportunity-radar/**. GitHub Pages cannot execute Python or keep these databases. Without a connected running API, the public site explains how to connect; it does not pretend to be searching.
+
+For the owner using the same computer, start the local backend and open the live frontend with:
+
+**https://kadiekeslar.github.io/opportunity-radar/?api=http://127.0.0.1:8000**
+
+Alternatively choose the header's connection settings and enter that URL. A browser may require permission to access local network services. This connects only that browser to its own computer, not all public visitors.
+
+To make the whole product usable by public visitors:
+
+1. Choose a Python/container host with **persistent writable storage**. No paid plan has been selected or purchased. Ephemeral/free server filesystems do not satisfy persistence. You can also run it on a persistent VM you already own.
+2. Deploy this folder with `Dockerfile` or the normal Uvicorn command, using one worker. Persist both `/app/data` and `/app/chroma_store`; keep `AUTO_REFRESH=1` and `REFRESH_HOURS=4`. Provide HTTPS. `CORS_ORIGINS` must include `https://kadiekeslar.github.io` (origin only, no path).
+3. For a local Docker alternative: `docker compose up --build -d`. This configuration uses named volumes and a localhost-only API port. It was prepared but Docker was not executed in this session.
+4. Set `VITE_API_URL=https://your-api-host` in `frontend/.env.local`, then run `npm run build` from `frontend/` and commit the generated project-root `index.html` and `assets/`. Never put secrets in VITE variables.
+5. Verify account creation, search, uploads, restart persistence, and background freshness on the deployed host. Configure backups of the persistent volumes before relying on saved applications.
+
+The frontend can remember a manually entered API URL in browser local storage, while account sessions stay in session storage. Remote APIs require HTTPS; localhost HTTP is accepted for development. Changing the backend does not send an existing backend's session token to the new one.
+
+### Important files
+
+- `backend/main.py`: API, per-user routes, read-only job feed, background scheduler.
+- `backend/database.py`: jobs, lifecycle events, accounts, tracker, board state, vector index state, future openings.
+- `backend/vectors.py`: token-aware chunking, local embedding, persistent collections, grouped retrieval, incremental indexing.
+- `backend/matching.py`: explicit eligibility extraction and evidence-based decision categories.
+- `backend/jobs/providers/`: Greenhouse, Lever, Ashby adapters.
+- `backend/jobs/refresh.py` / `refresh_jobs.py`: standalone importer and lifecycle reconciliation.
+- `companies.json`: monitored public boards.
+- `frontend/src/main.jsx` / `styles.css`: careers-style responsive interface.
+- `start.sh`, `Dockerfile`, `compose.yaml`: local and deployment launch options.
+- `prompt_log.md`: authentic prompts, development decisions, and verification history.
+- `DEMO.md`: video checklist and submission steps.
+
+### Verify
 
 ```sh
+source .venv/bin/activate
 python -m pytest backend/tests -q
+curl http://127.0.0.1:8000/health
+curl 'http://127.0.0.1:8000/jobs?q=defend%20against%20hackers%20trying%20to%20break%20in'
 cd frontend
 npm run build
 ```
 
-The tests use temporary fixture records and verify persistence, source identity uniqueness, pagination, filters, closed-job exclusion, and stale verification. They do not contact company websites or put fixtures in your real database.
+Tests use temporary databases, real local embeddings, and synthetic fixture records. They check runtime insertion/search, persistence, chunk bounds, closed/stale exclusions, authentication isolation, logout, resume deletion, eligibility, source lifecycle reconciliation, and unchanged embedding avoidance. A first test run may download the embedding model.
 
-## Stage 1 API
+### AI use and sources
 
-| Endpoint | Behavior |
-| --- | --- |
-| `GET /health` | Checks SQL and Chroma; reports Stage 1 and no connected sources |
-| `GET /jobs` | Current stored jobs, excluding closed |
-| `GET /jobs/new` | Jobs with lifecycle status NEW |
-| `GET /jobs/{id}` | Job detail, original URL, timestamps, and verification |
-| `GET /stats` | Database counts; "today" starts at midnight UTC |
+OpenAI Codex assisted with architecture, code, the Google Careers–influenced interface, tests, debugging, and this labeled technical documentation. The student must review the code, write the first four README sections in their own words, record the demo, and submit the assignment. The prompt log distinguishes actual user prompts from AI implementation notes.
 
-`/jobs` accepts `status=current|NEW|OPEN|CLOSED`, exact `company`, `location`, and `employment_type`, plus `limit` (1–100) and `offset`. NEW means the lifecycle status, while “discovered today” uses `first_seen_at`. Stage 3 defines the transition from NEW to OPEN. The default API may return stale current records so the UI can explicitly label them; they do not count as verified open.
-
-No public job-write, account, tracker, resume, matching, recommendations, opening predictions, source collection, or scheduled refresh endpoints are claimed in Stage 1. These follow the stages in the original brief.
-
-## GitHub Pages and later deployment
-
-The public frontend lives at **https://kadiekeslar.github.io/opportunity-radar/** alongside `crossy-road/` and `scripture-graph/`. `npm run build` writes `index.html` and `assets/` into this project’s root; commit those generated files together with the source. It does not replace the portfolio homepage or other projects. No repository-wide Pages workflow changes are needed for the existing branch-based setup.
-
-**GitHub Pages cannot run Python or persistent databases.** Until a separate backend is hosted, the public page shows “Backend not connected” and unknown counts, not a pretend live feed. Running the local API connects the local development site, not all public visitors.
-
-When ready for deployment in Stage 10:
-
-1. Deploy the Python API on a service with a persistent disk; keep SQLite and Chroma data on that disk. Do not use an ephemeral serverless filesystem. Run one API process while using this simple local-storage architecture.
-2. Set `DATABASE_URL`, `CHROMA_PATH`, and `CORS_ORIGINS` on that host. The public frontend origin is `https://kadiekeslar.github.io` (no path). Keep secrets on the backend. SQLite is fine for this first version; PostgreSQL requires a driver and later schema migrations.
-3. Copy `frontend/.env.example` to `frontend/.env.local`, set `VITE_API_URL=https://your-api-host`, run `npm run build`, and commit the updated root `index.html` and generated assets. VITE values are public; never put credentials in them.
-4. In Stage 3, add a separate refresh command and scheduler. Page loads must read our database, not scrape ATS providers.
-
-No hosting provider, paid plan, or schedule has been selected or activated.
-
-## Next verification checkpoint
-
-Confirm that you can start both services, see an empty connected dashboard, and pass the tests. **Then Stage 2** connects one real public job source. The roadmap in the UI shows the remaining stages; those features are intentionally not implemented in this first checkpoint.
-
-References: [Vite static deployment](https://vite.dev/guide/static-deploy), [FastAPI databases](https://fastapi.tiangolo.com/tutorial/sql-databases/), [Chroma persistent client](https://docs.trychroma.com/reference/python).
+Primary references: [Chroma Python API](https://docs.trychroma.com/reference/python), [Greenhouse Job Board API](https://docs.greenhouse.io/job-board), [Lever Postings API](https://github.com/lever/postings-api), [Ashby Job Postings API](https://developers.ashbyhq.com/docs/public-job-posting-api), [FastAPI](https://fastapi.tiangolo.com/), [Vite deployment](https://vite.dev/guide/static-deploy), [Google Careers layout](https://www.google.com/about/careers/applications/jobs/results/).

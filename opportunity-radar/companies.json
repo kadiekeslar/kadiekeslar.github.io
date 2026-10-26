@@ -1,0 +1,6 @@
+[
+  {"company": "Figma", "provider": "greenhouse", "board": "figma"},
+  {"company": "Duolingo", "provider": "greenhouse", "board": "duolingo"},
+  {"company": "Notion", "provider": "ashby", "board": "notion"},
+  {"company": "Palantir", "provider": "lever", "board": "palantir"}
+]

@@ -1,0 +1,9 @@
+.venv
+.env
+.env.*
+data
+chroma_store
+frontend
+assets
+__pycache__
+.pytest_cache
