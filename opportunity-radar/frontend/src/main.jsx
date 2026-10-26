@@ -144,6 +144,10 @@ function App() {
     setToast(message);
   }
   useEffect(() => {
+    if (api) localStorage.setItem("radar-api", api);
+  }, [api]);
+
+  useEffect(() => {
     if (!toast) return;
     const id = setTimeout(() => setToast(""), 6000);
     return () => clearTimeout(id);

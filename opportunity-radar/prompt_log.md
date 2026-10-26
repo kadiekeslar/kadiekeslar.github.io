@@ -1073,3 +1073,13 @@ The user attached the HW6 assignment with the final prompt. It called for persis
 - Add the actual prompts and debugging work you do after this version.
 - Record your demo and add its real link to your submission.
 - Describe one result you inspected, what you learned, and any corrections you made.
+
+## Hosting follow-up — verbatim user selections
+
+```text
+Use my existing Render account
+Yes, use Kadie's workspace
+Keep the backend local for now
+```
+
+The Render plugin was connected and its workspace/services inspected read-only. The agent prepared an optional persistent-storage configuration, verified current pricing, and requested approval before creating a paid service. The user chose local operation instead. No Render service, disk, subscription, or paid deployment was created. The GitHub Pages frontend was verified successfully against the running local API using the explicit localhost connection URL.

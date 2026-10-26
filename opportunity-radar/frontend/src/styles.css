@@ -1684,3 +1684,12 @@ code {
   width: 100%;
   outline: 0;
 }
+
+@media (max-width: 380px) {
+  .site-header nav {
+    gap: 8px;
+  }
+  .site-header nav button {
+    font-size: 10px;
+  }
+}
