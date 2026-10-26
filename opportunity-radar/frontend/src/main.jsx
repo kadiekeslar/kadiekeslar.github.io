@@ -13,7 +13,6 @@ import {
   SlidersHorizontal,
   Upload,
   Plus,
-  Settings,
   RefreshCw,
   BriefcaseBusiness,
   CircleHelp,
@@ -24,6 +23,17 @@ import {
   Sparkles,
 } from "lucide-react";
 import "./styles.css";
+import {
+  SAVED_KEY,
+  readSaved,
+  saveRole,
+  updateRole,
+  mergeSaved,
+  jobType,
+  verifiedOpen,
+  cacheJobs,
+  cachedFeed,
+} from "./browser-store.js";
 
 const REPO =
   "https://github.com/kadiekeslar/kadiekeslar.github.io/tree/main/opportunity-radar";
@@ -51,7 +61,7 @@ const initialAPI = validAPI(
   new URLSearchParams(location.search).get("api") ||
     import.meta.env.VITE_API_URL ||
     localStorage.getItem("radar-api") ||
-    (import.meta.env.DEV ? "http://127.0.0.1:8000" : ""),
+    "http://127.0.0.1:8000",
 );
 const tokenKey = (api) => `radar-session:${api}`;
 function time(value) {
@@ -83,12 +93,39 @@ function Modal({ title, children, close, wide = false }) {
   );
 }
 function App() {
-  const [api, setApi] = useState(initialAPI);
+  const api = initialAPI;
   const [token, setToken] = useState(
-    sessionStorage.getItem(tokenKey(initialAPI)) || "",
+    localStorage.getItem(tokenKey(initialAPI)) ||
+      sessionStorage.getItem(tokenKey(initialAPI)) ||
+      "",
   );
   const [user, setUser] = useState(null);
-  const [view, setView] = useState("discover");
+  const [savedRoles, setSavedRoles] = useState(() => readSaved(localStorage));
+  const savedRef = useRef(savedRoles);
+  function persistRoles(change) {
+    const next =
+      typeof change === "function" ? change(savedRef.current) : change;
+    localStorage.setItem(SAVED_KEY, JSON.stringify(next));
+    savedRef.current = next;
+    setSavedRoles(next);
+    return next;
+  }
+  useEffect(() => {
+    function onStorage(event) {
+      if (event.key === SAVED_KEY || event.key === null) {
+        const next = readSaved(localStorage);
+        savedRef.current = next;
+        setSavedRoles(next);
+      }
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+  const [view, setView] = useState(() => location.hash === "#saved" ? "applications" : "discover");
+  useEffect(() => {
+    if (view === "applications") history.replaceState(null, "", "#saved");
+    else if (location.hash === "#saved") history.replaceState(null, "", location.pathname + location.search);
+  }, [view]);
   const [q, setQ] = useState("");
   const [search, setSearch] = useState("");
   const [locationInput, setLocationInput] = useState("");
@@ -119,17 +156,28 @@ function App() {
   const [newSinceVisit, setNewSinceVisit] = useState(null);
 
   async function request(path, options = {}) {
-    if (!api) throw new Error("Connect your backend to use this feature.");
+    if (!api)
+      throw new Error(
+        "This feature is temporarily unavailable. Your saved roles are still here.",
+      );
     const response = await fetch(api + path, {
-      signal: AbortSignal.timeout(60000),
+      signal: AbortSignal.timeout(
+        path.startsWith("/jobs?") || path === "/health" || path === "/stats"
+          ? 4000
+          : 60000,
+      ),
       ...options,
       headers: {
-        ...(options.body instanceof FormData
-          ? {}
-          : { "Content-Type": "application/json" }),
+        ...(options.body && !(options.body instanceof FormData)
+          ? { "Content-Type": "application/json" }
+          : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers,
       },
+    }).catch(() => {
+      throw new Error(
+        "This feature is temporarily unavailable. You can still view and update your saved roles.",
+      );
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok)
@@ -194,6 +242,7 @@ function App() {
           setUser(null);
           setToken("");
           sessionStorage.removeItem(tokenKey(api));
+          localStorage.removeItem(tokenKey(api));
         }
       });
     return () => {
@@ -201,36 +250,74 @@ function App() {
     };
   }, [api, token]);
   useEffect(() => {
-    if (
-      !api ||
-      (["matches", "applications", "profile"].includes(view) && !token)
-    ) {
-      setData(null);
+    if (!user || !health) return;
+    let current = true;
+    request("/applications")
+      .then((result) => {
+        if (!current) return;
+        try {
+          persistRoles((rows) => mergeSaved(rows, result.items));
+        } catch {
+          notify(
+            "Your browser could not store your saved roles. Check available storage.",
+          );
+        }
+      })
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, [user?.id, api, health?.status]);
+
+  useEffect(() => {
+    if (view === "applications" || view === "profile") {
+      setBusy(false);
+      setError("");
       return;
     }
-    if (view === "profile") return;
+    if (view === "matches" && !token) {
+      setData(null);
+      setBusy(false);
+      return;
+    }
     let current = true;
-    setBusy(true);
+    const isFeed = view === "discover" || view === "recent";
+    const activeFilters = view === "recent" ? { status: "current" } : filters;
+    const cached =
+      isFeed && (!search || view === "recent")
+        ? cachedFeed(localStorage, activeFilters, view === "recent")
+        : [];
+    if (cached.length)
+      setData({
+        items: cached.slice(page * 20, page * 20 + 20),
+        total: cached.length,
+        offline: true,
+        view,
+      });
+    setBusy(!cached.length);
     setError("");
     const params = new URLSearchParams({ limit: 20, offset: page * 20 });
-    Object.entries(filters).forEach(([key, value]) => {
+    Object.entries(activeFilters).forEach(([key, value]) => {
       if (value !== "" && value !== false) params.set(key, value);
     });
-    if (search) params.set("q", search);
-    const endpoint =
-      view === "matches"
-        ? "/recommendations"
-        : view === "applications"
-          ? "/applications"
-          : view === "opening"
-            ? "/opening-soon"
-            : `/jobs?${params}`;
-    request(endpoint)
+    if (view === "recent") params.set("recent", "true");
+    if (search && view === "discover") params.set("q", search);
+    request(view === "matches" ? "/recommendations" : `/jobs?${params}`)
       .then((result) => {
-        if (current) setData({ ...result, view });
+        if (!current) return;
+        if (isFeed) cacheJobs(localStorage, result.items);
+        setData({ ...result, view });
       })
       .catch((err) => {
-        if (current) {
+        if (!current) return;
+        if (cached.length)
+          setData({
+            items: cached.slice(page * 20, page * 20 + 20),
+            total: cached.length,
+            offline: true,
+            view,
+          });
+        else {
           setData(null);
           setError(err.message);
         }
@@ -254,30 +341,49 @@ function App() {
     }
   }
   function loginGate() {
-    if (!api) {
-      setModal("connect");
-      return false;
-    }
     if (!user) {
       setModal("auth");
       return false;
     }
     return true;
   }
-  async function save(job) {
-    if (!loginGate()) return;
-    await action(async () => {
-      await request(`/jobs/${job.id}/save`, { method: "POST" });
-      notify("Saved to your applications.");
-      setRefresh((x) => x + 1);
-    });
+  function save(job) {
+    if (savedRef.current.some((row) => row.job.id === job.id)) {
+      setView("applications");
+      notify("This role is already saved.");
+      return;
+    }
+    try {
+      persistRoles((rows) => saveRole(rows, job));
+      notify("Saved. Find this role in Saved anytime.");
+      if (user)
+        request(`/jobs/${job.id}/save`, { method: "POST" }).catch(() =>
+          notify(
+            "Saved on this device. Account sync is temporarily unavailable.",
+          ),
+        );
+    } catch {
+      notify(
+        "Couldn’t save this role. Check your browser’s available storage and try again.",
+      );
+    }
   }
-  async function openJob(job) {
-    await action(async () => {
-      const result = await request(`/jobs/${job.id}`);
-      setDetail(result);
-      setModal("detail");
+  function openJob(job) {
+    setDetail({
+      ...job,
+      eligibility: job.eligibility || {
+        label: "Unknown",
+        checks: [],
+        note: "Review the original posting for eligibility requirements.",
+      },
+      connections: [],
     });
+    setModal("detail");
+    request(`/jobs/${job.id}`)
+      .then((result) =>
+        setDetail((current) => (current?.id === job.id ? result : current)),
+      )
+      .catch(() => {});
   }
   function doSearch(event) {
     event?.preventDefault();
@@ -292,27 +398,48 @@ function App() {
     setFilters((f) => ({ ...f, student }));
     setView("discover");
   }
-  async function changeStatus(job, status, notes) {
-    await action(async () => {
-      await request(`/jobs/${job.id}/status`, {
-        method: "POST",
-        body: JSON.stringify({ status, notes }),
-      });
+  function changeStatus(job, status, notes) {
+    try {
+      persistRoles((rows) => updateRole(rows, job, status, notes));
       notify("Application updated.");
-      setRefresh((x) => x + 1);
-    });
+      if (user)
+        request(`/jobs/${job.id}/status`, {
+          method: "POST",
+          body: JSON.stringify({ status, notes }),
+        }).catch(() =>
+          notify(
+            "Updated on this device. Account sync is temporarily unavailable.",
+          ),
+        );
+    } catch {
+      notify(
+        "Couldn’t save your changes. Check your browser’s available storage and try again.",
+      );
+    }
   }
   const connected = !!health;
-  const data = responseData?.view === view ? responseData : null;
+  const data =
+    view === "applications"
+      ? {
+          items: savedRoles,
+          counts: Object.fromEntries(
+            statuses.map((status) => [
+              status,
+              savedRoles.filter((row) => row.status === status).length,
+            ]),
+          ),
+        }
+      : responseData?.view === view
+        ? responseData
+        : null;
   const items = data?.items || [];
-  const needsAccount =
-    ["matches", "applications", "profile"].includes(view) && !user;
+  const needsAccount = ["matches", "profile"].includes(view) && !user;
   const titles = {
     discover: "Find your next opportunity.",
     matches: "Your experience. New possibilities.",
     applications: "Every next step, in one place.",
     profile: "Bring your experience to the search.",
-    opening: "Get ready for what’s next.",
+    recent: "See what just opened.",
   };
 
   return (
@@ -326,10 +453,10 @@ function App() {
         </a>
         <nav aria-label="Main navigation">
           {[
-            ["discover", "Find opportunities"],
+            ["discover", "Jobs"],
             ["matches", "For you"],
-            ["opening", "Opening soon"],
-            ["applications", "Applications"],
+            ["recent", "Recently opened"],
+            ["applications", `Saved (${savedRoles.length})`],
           ].map(([id, label]) => (
             <button
               key={id}
@@ -342,22 +469,8 @@ function App() {
         </nav>
         <div className="header-actions">
           <button
-            className="icon"
-            title="Backend connection"
-            aria-label="Backend connection"
-            onClick={() => setModal("connect")}
-          >
-            <Settings size={20} />
-          </button>
-          <button
             className={user ? "account-button" : "outline-button"}
-            onClick={() =>
-              user
-                ? setView("profile")
-                : api
-                  ? setModal("auth")
-                  : setModal("connect")
-            }
+            onClick={() => (user ? setView("profile") : setModal("auth"))}
           >
             {user ? user.profile.name || "My profile" : "Sign in"}
           </button>
@@ -385,8 +498,8 @@ function App() {
                 : view === "applications"
                   ? "Keep track of the roles you saved, the steps you took, and what comes next."
                   : view === "profile"
-                    ? "Your resume stays on the backend you connect. No external AI API is used."
-                    : "Confirmed dates and historical expectations stay clearly separate."}
+                    ? "Add your experience and discover roles that fit your strengths."
+                    : "Explore opportunities posted or first discovered in the past seven days."}
           </p>
           {view === "discover" && (
             <>
@@ -449,32 +562,13 @@ function App() {
             </>
           )}
         </section>
-        {!api && (
-          <section className="connection-banner">
-            <div>
-              <strong>Your frontend is ready. Connect the job engine.</strong>
-              <p>
-                Run the included backend locally, or connect a hosted API, to
-                search the real job database.
-              </p>
-            </div>
-            <button
-              className="outline-button"
-              onClick={() => setModal("connect")}
-            >
-              Connect backend <ArrowUpRight size={16} />
-            </button>
-          </section>
-        )}
-        {api && (
+        {connected && (
           <div className="live-strip">
             <span>
-              <i className={connected ? "live-dot" : "live-dot offline"} />
-              {connected
-                ? `${stats?.current?.toLocaleString() ?? "—"} current opportunities`
-                : "Connecting to job engine"}
+              <i className="live-dot" />
+              {stats?.current?.toLocaleString() ?? "—"} current opportunities
             </span>
-            <span>{stats?.new_today ?? "—"} discovered today (UTC)</span>
+            <span>{stats?.new_today ?? "—"} discovered today</span>
             <button
               onClick={() =>
                 action(async () => {
@@ -483,16 +577,19 @@ function App() {
                 })
               }
             >
-              {health?.sources_connected ?? 0} company boards{" "}
+              {health.sources_connected} company boards{" "}
               <ArrowUpRight size={13} />
             </button>
             <span className="last-refresh">
-              Verified{" "}
-              {health?.last_refresh_at
-                ? time(health.last_refresh_at)
-                : "not yet"}
+              Last checked {time(health.last_refresh_at)}
             </span>
           </div>
+        )}
+        {data?.offline && (
+          <p className="visit-note">
+            Showing previously viewed roles. Check the company’s application
+            page for current availability.
+          </p>
         )}
         {newSinceVisit !== null && (
           <p className="visit-note">
@@ -580,9 +677,9 @@ function App() {
                 >
                   <option value="">All types</option>
                   <option>Internship</option>
-                  <option>Intern</option>
-                  <option>FullTime</option>
                   <option>Full-time</option>
+                  <option>Part-time</option>
+                  <option>Contract</option>
                 </select>
               </details>
               <details open>
@@ -680,22 +777,20 @@ function App() {
                 />
               ) : !items.length ? (
                 <Empty
-                  title={
-                    api
-                      ? "No opportunities match these filters."
-                      : "A world of possibilities, ready to explore."
-                  }
-                  text={
-                    api
-                      ? "Try a broader description or adjust the filters."
-                      : "Connect the backend to browse real jobs and search by meaning."
-                  }
-                  action={api ? "Clear search" : "Connect backend"}
-                  onClick={() => (api ? shortcut("") : setModal("connect"))}
+                  title="No opportunities match these filters."
+                  text="Try a broader description or adjust the filters."
+                  action="Clear search"
+                  onClick={() => shortcut("")}
                 />
               ) : (
                 items.map((job) => (
-                  <JobCard key={job.id} job={job} save={save} open={openJob} />
+                  <JobCard
+                    key={job.id}
+                    job={job}
+                    save={save}
+                    saved={savedRoles.some((row) => row.job.id === job.id)}
+                    open={openJob}
+                  />
                 ))
               )}
               {data?.total > 20 && (
@@ -721,8 +816,8 @@ function App() {
                 </div>
               )}
               <div className="results-footer">
-                <Check size={16} /> Original company links. No hiring
-                probabilities. Freshness always visible.
+                <Check size={16} /> Review the requirements and apply directly
+                on the company’s website.
               </div>
             </section>
           </div>
@@ -730,9 +825,9 @@ function App() {
         {needsAccount && (
           <Empty
             title="Make this search yours."
-            text="Create an account to keep your resume, profile, and application tracker together."
+            text="Sign in to add your resume and find personalized matches. You can save and track roles without an account."
             action="Sign in or create account"
-            onClick={() => (api ? setModal("auth") : setModal("connect"))}
+            onClick={() => setModal("auth")}
           />
         )}
         {view === "matches" && user && (
@@ -770,26 +865,32 @@ function App() {
                   </div>
                 )}
                 {items.map((job) => (
-                  <JobCard key={job.id} job={job} save={save} open={openJob} />
+                  <JobCard
+                    key={job.id}
+                    job={job}
+                    save={save}
+                    saved={savedRoles.some((row) => row.job.id === job.id)}
+                    open={openJob}
+                  />
                 ))}
                 {!items.length && (
                   <Empty
                     title="No sufficiently relevant, freshly verified matches yet."
-                    text="Try refreshing the job corpus or adding more detail to your resume."
+                    text="Try again later or add more detail to your resume."
                   />
                 )}
               </>
             )}
           </section>
         )}
-        {view === "applications" && user && (
+        {view === "applications" && (
           <section className="content-page">
-            {busy ? (
-              <Loading />
-            ) : error ? (
-              <Empty title="Tracker unavailable" text={error} />
-            ) : (
+            {
               <>
+                <p className="muted">
+                  Saved on this device, ready when you return. Clearing this
+                  site’s browser data removes these items.
+                </p>
                 <div className="tracker-counts">
                   {["Saved", "Applied", "Interview", "Offer"].map((status) => (
                     <div key={status}>
@@ -854,7 +955,7 @@ function App() {
                   />
                 )}
               </>
-            )}
+            }
           </section>
         )}
         {view === "profile" && user && (
@@ -967,9 +1068,9 @@ function App() {
                 </div>
                 <h2>Your experience, in your words.</h2>
                 <p>
-                  Upload a PDF or plain text resume. We extract and embed the
-                  text locally on your connected backend. We never invent
-                  experience.
+                  Upload your resume to find opportunities related to your
+                  skills, projects, and experience. PDF and plain text are
+                  supported.
                 </p>
                 <form
                   onSubmit={(e) => {
@@ -1053,6 +1154,7 @@ function App() {
                   action(async () => {
                     await request("/auth/logout", { method: "POST" });
                     sessionStorage.removeItem(tokenKey(api));
+                    localStorage.removeItem(tokenKey(api));
                     setToken("");
                     setUser(null);
                     notify("Signed out.");
@@ -1065,57 +1167,70 @@ function App() {
             </div>
           </section>
         )}
-        {view === "opening" && (
+        {view === "recent" && (
           <section className="content-page">
-            <div className="opening-explainer">
-              <div>
-                <span className="badge green">Confirmed opening</span>
-                <h3>A date backed by a source.</h3>
-                <p>
-                  Applications open on a published date. We link to the
-                  evidence.
-                </p>
-              </div>
-              <div>
-                <span className="badge amber">Expected opening</span>
-                <h3>A historical pattern, clearly labeled.</h3>
-                <p>
-                  A recruiting-cycle prediction, never presented as a confirmed
-                  date.
-                </p>
-              </div>
+            <div className="section-row">
+              <h2>Recently opened opportunities</h2>
+              <span>Past seven days</span>
             </div>
-            {items.length ? (
-              items.map((item, i) => (
-                <article className="job-card" key={i}>
-                  <span className="badge">
-                    {item.kind === "EXPECTED"
-                      ? "Prediction — not confirmed"
-                      : "Confirmed by source"}
-                  </span>
-                  <h2>{item.title}</h2>
-                  <p>
-                    {item.company} · {item.date_label}
-                  </p>
-                  <blockquote>{item.evidence}</blockquote>
-                  <a
-                    className="text-button"
-                    href={item.source_url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Check source <ExternalLink size={15} />
-                  </a>
-                  <span className="badge">PREPARE</span>
-                </article>
+            <p className="muted">
+              Employer posting dates are shown when available. “First
+              discovered” means we found the role recently; its original posting
+              date wasn’t provided.
+            </p>
+            {busy ? (
+              <Loading />
+            ) : error ? (
+              <Empty
+                title="Recent opportunities are temporarily unavailable."
+                text={error}
+                action="Try again"
+                onClick={() => setRefresh((x) => x + 1)}
+              />
+            ) : items.length ? (
+              items.map((job) => (
+                <div key={job.id}>
+                  <div className="recent-date">
+                    {job.date_posted ? "Posted" : "First discovered"}{" "}
+                    {time(job.date_posted || job.first_seen_at)}
+                  </div>
+                  <JobCard
+                    job={job}
+                    save={save}
+                    saved={savedRoles.some((row) => row.job.id === job.id)}
+                    open={openJob}
+                  />
+                </div>
               ))
             ) : (
               <Empty
-                title="No opening dates have been verified yet."
-                text="We’re retaining posting history for future recruiting-cycle insights. We won’t invent a date to fill this page."
-                action="Browse current roles"
+                title="No recent openings found."
+                text="Check back soon, or explore all current opportunities."
+                action="Browse all roles"
                 onClick={() => setView("discover")}
               />
+            )}
+            {data?.total > 20 && (
+              <div className="pagination">
+                <button
+                  className="outline-button"
+                  disabled={!page}
+                  onClick={() => setPage(page - 1)}
+                >
+                  Previous
+                </button>
+                <span>
+                  {page * 20 + 1}–{Math.min(page * 20 + 20, data.total)} of{" "}
+                  {data.total}
+                </span>
+                <button
+                  className="outline-button"
+                  disabled={(page + 1) * 20 >= data.total}
+                  onClick={() => setPage(page + 1)}
+                >
+                  Next
+                </button>
+              </div>
             )}
           </section>
         )}
@@ -1129,9 +1244,9 @@ function App() {
         <a href={`${REPO}#readme`} target="_blank" rel="noreferrer">
           How it works <ArrowUpRight size={14} />
         </a>
-        <button onClick={() => setModal("connect")}>
-          {connected ? "Backend connected" : "Connect backend"}
-          <i className={connected ? "live-dot" : "live-dot offline"} />
+        <button onClick={() => setView("applications")}>
+          <Bookmark size={15} />
+          Your saved roles
         </button>
       </footer>
       {toast && (
@@ -1151,57 +1266,6 @@ function App() {
           Working…
         </div>
       )}
-      {modal === "connect" && (
-        <Modal title="Connect your job engine" close={() => setModal("")}>
-          <p className="muted">
-            GitHub Pages serves the interface. The Python backend stores jobs,
-            runs semantic search, and keeps your account data.
-          </p>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const value = validAPI(e.currentTarget.elements.api.value.trim());
-              if (!value) {
-                notify(
-                  "Use HTTPS for a hosted backend, or http://127.0.0.1:8000 locally.",
-                );
-                return;
-              }
-              localStorage.setItem("radar-api", value);
-              setApi(value);
-              setToken(sessionStorage.getItem(tokenKey(value)) || "");
-              setRefresh((x) => x + 1);
-              setModal("");
-            }}
-          >
-            <label>
-              Backend URL
-              <input
-                name="api"
-                type="url"
-                defaultValue={api || "http://127.0.0.1:8000"}
-                required
-              />
-            </label>
-            <button className="blue-button">
-              Connect backend <ArrowRight size={17} />
-            </button>
-          </form>
-          <p className="muted">
-            For local use, run <code>./start.sh</code> from the project folder,
-            then connect to <code>http://127.0.0.1:8000</code>. Your browser
-            must be on the same computer.
-          </p>
-          <a
-            className="text-button"
-            href={`${REPO}#run-it`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Setup and hosting instructions <ExternalLink size={15} />
-          </a>
-        </Modal>
-      )}
       {modal === "auth" && (
         <Modal
           title={
@@ -1210,8 +1274,8 @@ function App() {
           close={() => setModal("")}
         >
           <p className="muted">
-            Your account belongs to the backend you connected. No email
-            integration or email verification is used.
+            Sign in to use your resume and personalized matches. Saving roles is
+            available without an account.
           </p>
           <form
             onSubmit={(e) => {
@@ -1225,6 +1289,7 @@ function App() {
                     body: JSON.stringify(Object.fromEntries(form)),
                   },
                 );
+                localStorage.setItem(tokenKey(api), result.token);
                 sessionStorage.setItem(tokenKey(api), result.token);
                 setToken(result.token);
                 setUser(result.user);
@@ -1372,11 +1437,20 @@ function App() {
                 : "Apply on company website"}
               <ArrowUpRight size={17} />
             </a>
-            <button className="outline-button" onClick={() => save(detail)}>
+            <button
+              className={
+                savedRoles.some((row) => row.job.id === detail.id)
+                  ? "outline-button saved"
+                  : "outline-button"
+              }
+              onClick={() => save(detail)}
+            >
               <Bookmark size={17} />
-              Save
+              {savedRoles.some((row) => row.job.id === detail.id)
+                ? "Saved"
+                : "Save"}
             </button>
-            {user && (
+            {
               <select
                 aria-label="Track application status"
                 defaultValue=""
@@ -1391,7 +1465,7 @@ function App() {
                   <option key={s}>{s}</option>
                 ))}
               </select>
-            )}
+            }
           </div>
           <div className="detail-facts">
             <span>Found {time(detail.first_seen_at)}</span>
@@ -1422,18 +1496,18 @@ function App() {
       {modal === "sources" && (
         <Modal title="Source freshness" close={() => setModal("")}>
           <p className="muted">
-            Source collection runs in a separate worker. Reloading the page only
-            reads our database.
+            Explore opportunities from these companies’ original career pages.
+            Each role links directly to its application page.
           </p>
           {sources.map((source) => (
             <div className="source-row" key={source.key}>
               <strong>{source.company}</strong>
-              <span>{source.key}</span>
+
               <p>Last successful check: {time(source.succeeded_at)}</p>
               {source.error ? (
                 <p className="error-text">
-                  Last check failed: {source.error}. Earlier records are
-                  retained; freshness may be stale.
+                  The latest check didn’t finish. Check the original company
+                  page for current availability.
                 </p>
               ) : (
                 <p>
@@ -1449,20 +1523,17 @@ function App() {
   );
 }
 function Freshness({ job }) {
+  const fresh = verifiedOpen(job);
   return (
     <span
       className={
         "badge " +
-        (job.verified_open
-          ? "green"
-          : job.status === "CLOSED"
-            ? "gray"
-            : "amber")
+        (fresh ? "green" : job.status === "CLOSED" ? "gray" : "amber")
       }
     >
       {job.status === "CLOSED"
         ? "Closed"
-        : job.verified_open
+        : fresh
           ? "Verified open"
           : "Needs verification"}
     </span>
@@ -1473,7 +1544,7 @@ function Loading() {
     <div className="empty">
       <RefreshCw className="spin" size={28} />
       <h2>Finding possibilities…</h2>
-      <p>Searching your persistent job database.</p>
+      <p>Looking for your next opportunity.</p>
     </div>
   );
 }
@@ -1517,7 +1588,7 @@ function Evidence({ match }) {
     </section>
   );
 }
-function JobCard({ job, save, open }) {
+function JobCard({ job, save, open, saved = false }) {
   let excerpt = job.evidence || job.description;
   if (!job.evidence) {
     const lines = job.description
@@ -1544,11 +1615,14 @@ function JobCard({ job, save, open }) {
           </button>
         </div>
         <button
-          className="icon save-icon"
-          aria-label={`Save ${job.title}`}
+          className={saved ? "icon save-icon saved" : "icon save-icon"}
+          aria-label={`${saved ? "Saved" : "Save"} ${job.title}`}
+          aria-pressed={saved}
+          title={saved ? "View your saved roles" : "Save this role"}
           onClick={() => save(job)}
         >
-          <Bookmark size={21} />
+          <Bookmark size={18} fill={saved ? "currentColor" : "none"} />
+          <span>{saved ? "Saved" : "Save"}</span>
         </button>
       </div>
       <div className="job-meta">
@@ -1559,7 +1633,7 @@ function JobCard({ job, save, open }) {
         {job.employment_type && (
           <span>
             <BriefcaseBusiness size={16} />
-            {job.employment_type}
+            {jobType(job.employment_type)}
           </span>
         )}
         <Freshness job={job} />

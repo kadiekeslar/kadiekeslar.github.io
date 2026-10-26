@@ -3,6 +3,7 @@ import re
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from backend.job_types import employment_type
 
 
 class PlainText(HTMLParser):
@@ -50,5 +51,5 @@ def normalize(board, external_id, title, description, location, url, **optional)
     return dict(external_id=str(external_id), source=board['provider'], board_key=board['board'],
                 company=board['company'], title=title.strip(), description=description,
                 location=location or None, job_url=canonical(url),
-                employment_type=optional.get('employment_type') or ('Internship' if re.search(r'\bintern(ship)?\b', title, re.I) else None),
+                employment_type=employment_type(optional.get('employment_type'), title),
                 job_category=optional.get('job_category'), date_posted=optional.get('date_posted'))

@@ -1083,3 +1083,11 @@ Keep the backend local for now
 ```
 
 The Render plugin was connected and its workspace/services inspected read-only. The agent prepared an optional persistent-storage configuration, verified current pricing, and requested approval before creating a paid service. The user chose local operation instead. No Render service, disk, subscription, or paid deployment was created. The GitHub Pages frontend was verified successfully against the running local API using the explicit localhost connection URL.
+
+## Usability correction — verbatim user prompt
+
+```text
+there are a bunch of bugs, like job types has intern and full time listed 2 times, i want the user to just be able to get on and see their saved stuff not have to connect to a backend, the settings bar has stuff for backend hitting the saved button gives no indication you actually hit it Your resume stays on the backend you connect. No external AI API is used. the user doesnt need to see this if ipening soon never has anything leave it off and just have a recently opened feature
+```
+
+AI-written implementation notes: normalized provider employment types in both API filters and display; removed backend configuration and implementation language from the UI; made Saved a browser-persistent tracker without login/setup; added immediate filled-bookmark, Saved label, and navigation-count feedback; preserved existing account-save import; replaced empty future-opening UI with a date-aware recent feed. Tested save/status/note persistence through reload and with an intentionally unavailable service in a local preview. Public job snapshots exclude resume evidence, and cached verification expires. The backend remains local per the user's prior decision; no paid service or cloud account synchronization is implied.

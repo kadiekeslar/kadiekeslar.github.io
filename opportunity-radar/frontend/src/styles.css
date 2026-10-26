@@ -1693,3 +1693,30 @@ code {
     font-size: 10px;
   }
 }
+/* Saved state remains visible after the confirmation message disappears. */
+.job-card .save-icon {
+  width: auto;
+  min-width: 70px;
+  padding: 8px 10px;
+  display: inline-flex;
+  gap: 6px;
+  border-radius: 20px;
+  font-size: 11px;
+}
+.job-card .save-icon.saved,
+.outline-button.saved {
+  color: #1967d2;
+  background: #e8f0fe;
+}
+.recent-date {
+  color: #5f6368;
+  font-size: 11px;
+  margin: 22px 3px 10px;
+}
+@media (max-width: 700px) {
+  .job-card .save-icon {
+    min-width: 61px;
+    padding: 7px;
+    font-size: 10px;
+  }
+}

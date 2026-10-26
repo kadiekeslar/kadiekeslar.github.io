@@ -166,3 +166,23 @@ def test_original_application_identifiers_survive_normalization():
     from backend.jobs.providers.common import canonical
     assert canonical('https://example.com/careers?gh_jid=123&utm_source=test')=='https://example.com/careers?gh_jid=123'
     assert canonical('https://example.com/careers?gh_jid=456')!='https://example.com/careers?gh_jid=123'
+
+
+def test_job_types_group_provider_aliases_and_recent_openings_use_real_dates(app):
+    with TestClient(app) as client:
+        with app.state.sessions() as s:
+            s.add_all([record('intern-a',employment_type='Intern'),record('intern-b',employment_type='Internship'),
+                       record('full-a',employment_type='FullTime'),record('full-b',employment_type='Full-time'),
+                       record('old-posting',date_posted=utcnow()-timedelta(days=30)),
+                       record('old-discovery',first_seen_at=utcnow()-timedelta(days=30)),
+                       record('future-date',date_posted=utcnow()+timedelta(days=2))])
+            s.commit()
+        interns=client.get('/jobs',params={'employment_type':'Internship'}).json()['items']
+        assert {row['external_id'] for row in interns}=={'intern-a','intern-b','old-posting','old-discovery','future-date'}
+        # Null types on explicit internship titles are intentionally inferred too.
+        assert all(row['employment_type']=='Internship' for row in interns)
+        full_time=client.get('/jobs',params={'employment_type':'Full-time'}).json()['items']
+        assert {row['external_id'] for row in full_time}=={'full-a','full-b'}
+        assert all(row['employment_type']=='Full-time' for row in full_time)
+        recent=client.get('/jobs?recent=true').json()['items']
+        assert {row['external_id'] for row in recent}=={'intern-a','intern-b','full-a','full-b'}

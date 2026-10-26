@@ -20,6 +20,7 @@ from backend.auth import credentials, identify, issue, login, password_hash
 from backend.config import database_url
 from backend.database import Application, Base, BoardState, Job, LoginSession, Opening, User, connect, utcnow
 from backend.matching import decision, eligibility, resume_sections
+from backend.job_types import employment_type as normalized_type
 from backend.schemas import JobOut
 from backend.vectors import Vectors, fingerprint
 
@@ -102,10 +103,11 @@ def create_app(db_url=None, vector_path=None, vector_factory=Vectors):
 
     def present(job):
         result = JobOut.model_validate(job).model_dump(mode='json')
+        result['employment_type'] = normalized_type(job.employment_type, job.title)
         result['source_label'] = 'User supplied · not source verified' if job.source == 'manual' else job.source.title()
         return result
 
-    def current_filters(status='current', company=None, location=None, employment_type=None, days=None, student=False):
+    def current_filters(status='current', company=None, location=None, employment_type=None, days=None, student=False, recent=False):
         statement = select(Job)
         statement = statement.where(Job.status.in_(['NEW', 'OPEN'])) if status == 'current' else statement.where(Job.status == status)
         if company:
@@ -113,7 +115,18 @@ def create_app(db_url=None, vector_path=None, vector_factory=Vectors):
         if location:
             statement = statement.where(Job.location.icontains(location, autoescape=True))
         if employment_type:
-            statement = statement.where(Job.employment_type.ilike(employment_type))
+            key = func.lower(func.replace(func.replace(func.replace(Job.employment_type, '-', ''), '_', ''), ' ', ''))
+            canonical = normalized_type(employment_type)
+            aliases = {'Internship': ['intern', 'internship'], 'Full-time': ['fulltime'],
+                       'Part-time': ['parttime'], 'Contract': ['contract', 'contractor']}
+            condition = key.in_(aliases.get(canonical, [employment_type.lower()]))
+            if canonical == 'Internship':
+                condition = condition | (Job.employment_type.is_(None) & Job.title.regexp_match(r'(?i)\bintern(ship)?\b'))
+            statement = statement.where(condition)
+        if recent:
+            statement = statement.where(Job.status != 'CLOSED',
+                func.coalesce(Job.date_posted, Job.first_seen_at) >= utcnow() - timedelta(days=7),
+                func.coalesce(Job.date_posted, Job.first_seen_at) <= utcnow())
         if days:
             statement = statement.where(Job.first_seen_at >= utcnow() - timedelta(days=days))
         if student:
@@ -258,8 +271,8 @@ def create_app(db_url=None, vector_path=None, vector_factory=Vectors):
     def jobs(q: str = Query('', max_length=2000), status: Literal['current', 'NEW', 'OPEN', 'CLOSED'] = 'current',
              company: str | None = None, location: str | None = None, employment_type: str | None = None,
              days: int | None = Query(None, ge=1, le=3650), student: bool = False,
-             limit: int = Query(20, ge=1, le=100), offset: int = Query(0, ge=0)):
-        statement = current_filters(status, company, location, employment_type, days, student)
+             limit: int = Query(20, ge=1, le=100), offset: int = Query(0, ge=0), recent: bool = False):
+        statement = current_filters(status, company, location, employment_type, days, student, recent)
         with sessions() as session:
             if q.strip():
                 records = session.scalars(statement).all()
@@ -268,7 +281,8 @@ def create_app(db_url=None, vector_path=None, vector_factory=Vectors):
                 return {'items': [{**present(lookup[hit['job_id']]), **hit} for hit in hits[offset:offset+limit]],
                         'total': len(hits), 'semantic': True, 'result_limit': 100}
             total = session.scalar(select(func.count()).select_from(statement.subquery()))
-            records = session.scalars(statement.order_by(Job.first_seen_at.desc(), Job.title, Job.id).limit(limit).offset(offset)).all()
+            order_date = func.coalesce(Job.date_posted, Job.first_seen_at) if recent else Job.first_seen_at
+            records = session.scalars(statement.order_by(order_date.desc(), Job.title, Job.id).limit(limit).offset(offset)).all()
             return {'items': [present(job) for job in records], 'total': total, 'semantic': False}
 
     @app.post('/jobs/import')

@@ -42,7 +42,7 @@ cd ..
 ./start.sh
 ```
 
-Open **http://127.0.0.1:5173/opportunity-radar/**. Make an account with an email-format identifier and a password of at least 10 characters. Email is not contacted or verified. Use a unique password; password reset and email integration are not implemented.
+Open **http://127.0.0.1:5173/opportunity-radar/**. Saving roles and using the application tracker require no account or setup. They persist in the current browser. Accounts are optional for resume matching: use an email-format identifier and a password of at least 10 characters. Email is not contacted or verified. Use a unique password; password reset and email integration are not implemented.
 
 The API starts at **http://127.0.0.1:8000**, with interactive documentation at **http://127.0.0.1:8000/docs**. The first background import downloads an approximately **79 MB** embedding model and populates the database. The initial import/index took about 2.5 minutes on the development machine. The site can display imported postings before every vector is ready; semantic results expand as indexing completes. Later refreshes only embed jobs with changed text or missing index state.
 
@@ -99,6 +99,14 @@ One vector item is a **maximum 220-token passage**, with a 30-token overlap. Chu
 
 On refresh: a first appearance becomes NEW; an existing listing becomes OPEN and updates verification; a disappeared listing becomes CLOSED, retaining its original record and closing timestamp. Reopened postings retain their original first-seen time and gain a REOPENED event. NEW is a lifecycle flag, while “discovered today” uses midnight UTC. `job_events` preserves lifecycle history for later recruiting-cycle analysis. Source identity plus canonical original URLs avoid exact duplicates; fuzzy cross-provider deduplication is not implemented.
 
+### Saving, returning, and recent openings
+
+The **Saved** tab opens immediately, including when the opportunity service is unavailable. A save fills the bookmark, changes its label to Saved, and updates the navigation count. Role snapshots, application statuses, dates, and notes persist in browser local storage across reloads; clearing site data removes them. This is device/browser storage, not cross-device account synchronization. Existing signed-in account saves are merged into the browser tracker when available; signed-in updates also attempt to sync to that account. Browser snapshots include public posting fields only, never resume evidence.
+
+End users are not shown backend settings or connection instructions. The app uses its configured API automatically, defaulting to localhost for the current local-only setup. Fresh job search and resume matching still require that service to be running; this UI cleanup does not create cloud hosting. Previously viewed roles can be browsed from a small browser cache during an outage, with an explicit cached-data notice and verification freshness recalculated from timestamps. Cached browsing is not presented as semantic search.
+
+**Recently opened** replaces the empty future-openings page. It selects roles with employer posting dates in the past seven days; where no date is supplied, it uses and labels First discovered instead. Known old postings do not qualify merely because they were imported today. Provider job-type variants such as Intern/Internship and FullTime/Full-time map to one label and one filter each.
+
 ### Runtime additions and useful retrieval
 
 1. Sign in, choose **Add a role**, and paste a public posting's title, company, original URL, and description (at least 80 characters).
@@ -140,9 +148,9 @@ Eligibility extraction supports only explicit years-of-experience requirements, 
 - SKIP: a recognized eligibility failure or weak match.
 - PREPARE: a separately stored future opening backed by a source or labeled historical prediction.
 
-No future opening dates or historical predictions have been fabricated. The opening-soon model/UI distinguish CONFIRMED from EXPECTED, but the initial table is empty. Historical forecasting, email integration, and sophisticated requirement extraction remain future work.
+No future opening dates or historical predictions have been fabricated. Future-opening tables/API remain reserved for later historical analysis; the public interface now shows Recently opened rather than an empty prediction page. Historical forecasting, email integration, and sophisticated requirement extraction remain future work.
 
-Application statuses: Saved, Applied, Interview, Rejected, Offer, Withdrawn. Saved/applied dates, notes, and status persist per account. Saving an applied job does not regress its status. Profile and resume data are scoped to the authenticated user. Passwords use salted scrypt hashes; bearer tokens are random, hashed in SQL, expire after seven days, and are stored in browser session storage per backend origin. Basic in-process authentication throttling is included. There is no account recovery, email verification, multi-instance rate limiting, or production account administration yet.
+Application statuses: Saved, Applied, Interview, Rejected, Offer, Withdrawn. Saved/applied dates, notes, and status persist in the browser tracker immediately, with optional account synchronization when signed in. Saving an applied job does not regress its status. Profile and resume data are scoped to the authenticated user. Passwords use salted scrypt hashes; bearer tokens are random, hashed in SQL, expire after seven days, and are stored in browser session storage per backend origin. Basic in-process authentication throttling is included. There is no account recovery, email verification, multi-instance rate limiting, or production account administration yet.
 
 ### Public frontend and backend hosting
 
@@ -152,7 +160,7 @@ For the owner using the same computer, start the local backend and open the live
 
 **https://kadiekeslar.github.io/opportunity-radar/?api=http://127.0.0.1:8000**
 
-Alternatively choose the header's connection settings and enter that URL. A browser may require permission to access local network services. This connects only that browser to its own computer, not all public visitors.
+The service URL is configured by the developer, not through user-facing settings. A browser may require permission to access local network services. This connects only that browser to its own computer, not all public visitors.
 
 To make the whole product usable by public visitors:
 
@@ -193,7 +201,7 @@ cd frontend
 npm run build
 ```
 
-Tests use temporary databases, real local embeddings, and synthetic fixture records. They check runtime insertion/search, persistence, chunk bounds, closed/stale exclusions, authentication isolation, logout, resume deletion, eligibility, source lifecycle reconciliation, and unchanged embedding avoidance. A first test run may download the embedding model.
+Tests use temporary databases, real local embeddings, and synthetic fixture records. They check runtime insertion/search, persistence, chunk bounds, closed/stale exclusions, authentication isolation, logout, resume deletion, eligibility, source lifecycle reconciliation, and unchanged embedding avoidance. A first test run may download the embedding model. Run `npm test` from `frontend/` for browser-storage, job-type, offline-cache, and freshness checks.
 
 ### AI use and sources
 
