@@ -1,0 +1,30 @@
+# Deployment configuration only. Creating a Starter service and disk costs money;
+# inspect the current Render quote and obtain owner approval before activation.
+services:
+  - type: web
+    name: opportunity-radar-api
+    runtime: python
+    rootDir: opportunity-radar
+    plan: starter
+    buildCommand: pip install -r requirements.lock.txt
+    startCommand: python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.14
+      - key: DATABASE_URL
+        value: sqlite:////var/data/opportunities.sqlite3
+      - key: CHROMA_PATH
+        value: /var/data/chroma_store
+      - key: MODEL_CACHE_PATH
+        value: /var/data/models/all-MiniLM-L6-v2
+      - key: CORS_ORIGINS
+        value: https://kadiekeslar.github.io,http://127.0.0.1:5173,http://localhost:5173
+      - key: AUTO_REFRESH
+        value: "1"
+      - key: REFRESH_HOURS
+        value: "4"
+    disk:
+      name: radar-state
+      mountPath: /var/data
+      sizeGB: 1

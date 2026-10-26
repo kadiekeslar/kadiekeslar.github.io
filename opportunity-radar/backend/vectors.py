@@ -1,6 +1,7 @@
 """One local embedding model, token-aware chunks, and persistent Chroma collections."""
 import hashlib
 import logging
+import os
 from pathlib import Path
 
 import chromadb
@@ -22,7 +23,7 @@ class Vectors:
     def __init__(self, path=None):
         self.client = chromadb.PersistentClient(path=str(path or chroma_path()))
         self.embed = ONNXMiniLM_L6_V2(preferred_providers=['CPUExecutionProvider'])
-        self.embed.DOWNLOAD_PATH = ROOT / 'data' / 'models' / 'all-MiniLM-L6-v2'
+        self.embed.DOWNLOAD_PATH = Path(os.getenv('MODEL_CACHE_PATH', str(ROOT / 'data' / 'models' / 'all-MiniLM-L6-v2')))
         # Separate from Stage 1's empty untyped collection; never mix dimensions/models.
         self.jobs = self.client.get_or_create_collection('job_chunks_minilm_v1', embedding_function=self.embed,
                                                        metadata={'hnsw:space': 'cosine'})

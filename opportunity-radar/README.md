@@ -164,6 +164,10 @@ To make the whole product usable by public visitors:
 
 The frontend can remember a manually entered API URL in browser local storage, while account sessions stay in session storage. Remote APIs require HTTPS; localhost HTTP is accepted for development. Changing the backend does not send an existing backend's session token to the new one.
 
+### Prepared Render configuration
+
+`render.yaml` configures a single Python service in this repository's `opportunity-radar` subfolder. One disk mounted at `/var/data` holds SQLite, Chroma, and the embedding model. `MODEL_CACHE_PATH` keeps model downloads on that same disk. The configuration is prepared; service creation still requires account and cost approval. Render's free web services cannot attach persistent disks. Creating the proposed paid service is a separate action from committing this file.
+
 ### Important files
 
 - `backend/main.py`: API, per-user routes, read-only job feed, background scheduler.
