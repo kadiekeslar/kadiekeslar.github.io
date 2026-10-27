@@ -335,26 +335,58 @@ def create_app(db_url=None, vector_path=None, vector_factory=Vectors):
         with sessions() as session:
             user = identify(session, authorization)
             profile = json.loads(user.profile_json)
-            if not (user.resume_text or profile.get('skills') or profile.get('experience')):
+            has_profile_evidence = bool(user.resume_text or profile.get('skills') or profile.get('experience'))
+            if not has_profile_evidence and not q.strip():
                 return {'items': [], 'total': 0, 'needs_info': True,
                         'note': 'Add skills and experience or a resume in Info to find jobs that fit you.'}
             statement = current_filters(company=company, location=location,
                 employment_type=employment_type, recent=recent, days=days)
             jobs = session.scalars(statement.where(Job.last_verified_at >= utcnow() - timedelta(hours=24),
                 Job.last_verified_at <= utcnow())).all()
-            # Retrieve broadly before qualification filtering, so disqualified top hits do not
-            # hide a qualified lower-ranked role. Keep exact requirement checks independent.
-            results = matches(user, jobs, limit=len(jobs)) if jobs else []
+            if not jobs:
+                return {'items': [], 'total': 0}
+
+            # A typed search is the primary semantic query. Resume/profile similarity is only
+            # a small secondary signal, so a search such as "teach a new language" can surface
+            # learning/language roles even when the user's portfolio is mostly software work.
+            if q.strip():
+                query_hits = app.state.vectors.search(q.strip(), [job.id for job in jobs], limit=len(jobs))
+                profile_results = matches(user, jobs, limit=len(jobs)) if has_profile_evidence else []
+                profile_by_id = {item['id']: item for item in profile_results}
+                by_id = {job.id: job for job in jobs}
+                ranked = []
+                for hit in query_hits:
+                    if hit['match'] == 'Weak Match':
+                        continue
+                    job = by_id[hit['job_id']]
+                    eligible = eligibility(job, profile)
+                    if eligible['label'] == 'Not eligible':
+                        continue
+                    profile_hit = profile_by_id.get(job.id)
+                    profile_distance = profile_hit['distance'] if profile_hit else 0.78
+                    item = present(job)
+                    ranked.append({**item,
+                                   'distance': hit['distance'],
+                                   'query_distance': hit['distance'],
+                                   'profile_distance': profile_distance,
+                                   'evidence': hit['evidence'],
+                                   'resume_evidence': profile_hit.get('resume_evidence') if profile_hit else None,
+                                   'match': hit['match'],
+                                   'eligibility': eligible,
+                                   'action': 'APPLY NOW' if eligible['label'] == 'Likely eligible' else 'REVIEW & APPLY',
+                                   'connection': 'This role is ranked primarily by the meaning of your current search. Your saved experience is used only as a secondary fit signal.',
+                                   '_rank': hit['distance'] + (0.15 * profile_distance)})
+                ranked.sort(key=lambda item: item['_rank'])
+                for item in ranked:
+                    item.pop('_rank', None)
+                return {'items': ranked[offset:offset + limit], 'total': len(ranked),
+                        'note': 'Search meaning comes first; your saved experience only refines the order. Known eligibility failures are excluded.'}
+
+            # With no typed search, recommendations are based on the user's saved evidence.
+            results = matches(user, jobs, limit=len(jobs)) if has_profile_evidence else []
             results = [item for item in results if item['match'] in ('Excellent Match', 'Strong Match')
                 and item['eligibility']['label'] != 'Not eligible'
                 and not any(check['result'] == 'Unknown' for check in item['eligibility']['checks'])]
-            desired = q.strip() or profile.get('preferred_roles', '').strip()
-            if desired and results:
-                role_hits = {hit['job_id']: hit for hit in app.state.vectors.search(desired,
-                    [item['id'] for item in results], limit=len(results)) if hit['distance'] < .48}
-                results = [dict(item, preference_distance=role_hits[item['id']]['distance'])
-                           for item in results if item['id'] in role_hits]
-                results.sort(key=lambda item: (item['distance'] + item['preference_distance']) / 2)
             for item in results:
                 item['action'] = 'APPLY NOW' if item['eligibility']['label'] == 'Likely eligible' else 'REVIEW & APPLY'
             return {'items': results[offset:offset + limit], 'total': len(results),
