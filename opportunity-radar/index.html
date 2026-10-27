@@ -14,15 +14,80 @@
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%231a73e8'/%3E%3Ccircle cx='20' cy='20' r='13' fill='none' stroke='%23ffffff'/%3E%3Cpath d='M20 20L30 10' stroke='%23ffffff' stroke-width='3'/%3E%3C/svg%3E"
     />
     <script>
-      // GitHub Pages cannot run the local FastAPI service. Use the hosted
-      // Opportunity Radar API for the public site; localhost remains available
-      // when the frontend is run through Vite during local development.
       if (location.hostname === "kadiekeslar.github.io") {
         localStorage.setItem(
           "radar-api",
           "https://nnzrqpvcpnhizfuxovhg.supabase.co/functions/v1/radar",
         );
       }
+    </script>
+    <script type="module">
+      // The local Python app extracts PDFs server-side. GitHub Pages cannot run
+      // Python, so the public demo extracts PDF text in the browser and sends
+      // only the extracted text to the hosted Opportunity Radar API.
+      document.addEventListener(
+        "submit",
+        async (event) => {
+          const form = event.target;
+          if (!(form instanceof HTMLFormElement)) return;
+          const input = form.querySelector('input[name="resume"]');
+          const file = input?.files?.[0];
+          if (!file || !(file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"))) return;
+
+          event.preventDefault();
+          event.stopImmediatePropagation();
+
+          const button = form.querySelector('button[type="submit"], button:not([type])');
+          const oldText = button?.textContent;
+          if (button) {
+            button.disabled = true;
+            button.textContent = "Processing PDF…";
+          }
+
+          try {
+            if (file.size > 5_000_000) throw new Error("Resume must be 5 MB or smaller.");
+            const pdfjs = await import("https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs");
+            pdfjs.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
+            const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+            if (pdf.numPages > 20) throw new Error("Resume PDFs must be 20 pages or fewer.");
+
+            const pages = [];
+            for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              const content = await page.getTextContent();
+              pages.push(content.items.map((item) => item.str || "").join(" "));
+            }
+            const text = pages.join("\n\n").replace(/[ \t]+/g, " ").trim();
+            if (text.length < 40) throw new Error("This PDF does not contain enough readable text. Scanned/image-only PDFs need OCR first.");
+
+            const api = localStorage.getItem("radar-api") || "https://nnzrqpvcpnhizfuxovhg.supabase.co/functions/v1/radar";
+            const key = `radar-session:${api}`;
+            const token = localStorage.getItem(key) || sessionStorage.getItem(key);
+            if (!token) throw new Error("Please sign in again before uploading your resume.");
+
+            const response = await fetch(`${api}/resume`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ text }),
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.detail || "Resume upload failed.");
+
+            alert("Resume uploaded. Your saved information and resume will now be used for job matches.");
+            location.reload();
+          } catch (error) {
+            alert(error?.message || "Could not process this PDF.");
+            if (button) {
+              button.disabled = false;
+              button.textContent = oldText || "Upload & find connections";
+            }
+          }
+        },
+        true,
+      );
     </script>
     <script type="module" crossorigin src="/opportunity-radar/assets/index-DQHOFlsg.js"></script>
     <link rel="stylesheet" crossorigin href="/opportunity-radar/assets/index-D0RzNfMm.css">
