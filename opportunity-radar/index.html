@@ -32,9 +32,7 @@
         const text = `${title}\n${description}`;
         const level = currentProfile.degree_level ||
           ((currentProfile.school || currentProfile.major || currentProfile.graduation_date) ? "Bachelor" : "");
-
         if (["Master", "MBA", "PhD"].includes(level)) return false;
-
         const titleAdvanced = /\b(ph\.?d\.?|doctoral|doctorate|mba|master(?:'s|s)?|graduate research|graduate intern)\b/i.test(title);
         const requiredAdvanced = /\b(ph\.?d\.?|doctoral|doctorate|mba|master(?:'s|s)?)\b.{0,80}\b(required|must|minimum|currently pursuing|enrolled)\b|\b(required|must|minimum|currently pursuing|enrolled)\b.{0,80}\b(ph\.?d\.?|doctoral|doctorate|mba|master(?:'s|s)?)\b/i.test(text);
         return titleAdvanced || requiredAdvanced;
@@ -77,16 +75,37 @@
         return response;
       };
 
-      function hideUnknownEligibility(root = document) {
+      function cleanInterface(root = document) {
         for (const el of root.querySelectorAll?.("span, div, p, section") || []) {
           const text = (el.textContent || "").replace(/\s+/g, " ").trim();
           if (/^Eligibility:?\s*Unknown$/i.test(text) || /^Unknown\s*Eligibility$/i.test(text)) {
             el.style.display = "none";
           }
         }
+
+        // Info should describe the student, not repeat what they are searching for now.
+        for (const label of root.querySelectorAll?.("label") || []) {
+          const directText = Array.from(label.childNodes)
+            .filter((n) => n.nodeType === Node.TEXT_NODE)
+            .map((n) => n.textContent || "")
+            .join(" ")
+            .replace(/\s+/g, " ")
+            .trim();
+          if (/^Preferred roles$/i.test(directText) || /^Preferred location/i.test(directText)) {
+            label.style.display = "none";
+          }
+        }
+
+        // Keep the single top-level "Where?" box; remove the duplicate sidebar location field.
+        for (const details of root.querySelectorAll?.("aside.filters details") || []) {
+          const summary = details.querySelector("summary");
+          if (/^Locations?\b/i.test((summary?.textContent || "").trim())) {
+            details.style.display = "none";
+          }
+        }
       }
-      new MutationObserver(() => hideUnknownEligibility()).observe(document.documentElement, { childList: true, subtree: true });
-      document.addEventListener("DOMContentLoaded", () => hideUnknownEligibility());
+      new MutationObserver(() => cleanInterface()).observe(document.documentElement, { childList: true, subtree: true });
+      document.addEventListener("DOMContentLoaded", () => cleanInterface());
 
       document.addEventListener(
         "submit",
