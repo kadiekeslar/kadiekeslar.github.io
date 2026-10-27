@@ -1028,25 +1028,6 @@ Start with STAGE 1 only.
 
 Before writing a lot of code, briefly tell me the architecture you are choosing and why. Then create Stage 1.
 ```
-# Opportunity Radar Prompt Log
-
-## Tools Used
-
-I used OpenAI Codex to build and modify most of the project code. I also used ChatGPT to help plan changes, check the assignment requirements, debug problems I found while testing, and fix parts of the GitHub Pages and Supabase version.
-
-## Initial Codex Prompt
-
-**Keep the full original prompt that starts with:**
-
-```text
-I want to build a real live website called Opportunity Radar. It is a job/internship discovery, recommendation, and application tracking website for college students.
-
-This should NOT just be a school demo where I upload a static JSON dataset of old jobs.
-
-The main goal is for the website to actively maintain a database of real jobs that are currently open...
-```
-
-Keep that entire original prompt verbatim through:
 
 ```text
 Start with STAGE 1 only.
