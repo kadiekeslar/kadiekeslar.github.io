@@ -5,9 +5,9 @@ This is AI-generated preparation guidance. Record your own screen and explain wh
 1. Start `./start.sh`, wait for the corpus to finish indexing, and open the local website.
 2. Show the source list and `/health` count: hundreds of real postings, thousands of persistent chunks.
 3. Search `defend against hackers trying to break in`. Open the Figma Security Engineer result and explain how the threat-detection passage relates without reusing the query's important words. If the employer has closed that job, use the other documented query or re-test a new example and update your README honestly.
-4. Create a local account. Choose **Add a role** and paste a real public posting from a company outside `companies.json`, including its original URL and full description. Show that it appears immediately in a semantic search. Point out that it remains **Needs verification** rather than falsely claiming the source is open.
-5. Save the opportunity. Open **Applications**, change its status to Applied, and add a next-step note.
-6. Optionally upload a resume, open **For you**, and show the exact resume/job evidence and separate eligibility status. Avoid exposing private resume/contact details in your public recording.
+4. Create a local account. Choose **Add a role** and paste a real public posting from a company outside `companies.json`, including its original URL and full description. Show that it appears immediately in a semantic search using the general GET `/jobs?q=...` endpoint in `/docs`. The personalized Jobs feed intentionally excludes unverified submissions. Point out that it remains **Needs verification** rather than falsely claiming the source is open.
+5. Save the opportunity. Open **Saved**, change its status to Applied, and add a next-step note.
+6. Optionally upload a resume, open **Jobs**, and show the exact resume/job evidence and separate eligibility status. Avoid exposing private resume/contact details in your public recording.
 7. Stop/restart the API and show the same job, vector count, and saved application still present.
 
 Before submission:

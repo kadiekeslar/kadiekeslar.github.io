@@ -37,6 +37,9 @@ class Profile(BaseModel):
     graduation_date: date | None = None
     preferred_roles: str = Field('', max_length=500)
     preferred_locations: str = Field('', max_length=500)
+    skills: str = Field('', max_length=4000)
+    experience: str = Field('', max_length=8000)
+    preferred_job_type: str = Field('', max_length=100)
     years_experience: int | None = Field(None, ge=0, le=60)
     needs_sponsorship: bool | None = None
 
@@ -99,7 +102,8 @@ def create_app(db_url=None, vector_path=None, vector_factory=Vectors):
 
     def user_out(user):
         return {'id': user.id, 'email': user.email, 'profile': json.loads(user.profile_json),
-                'has_resume': bool(user.resume_text), 'last_visit_at': user.last_visit_at}
+                'has_resume': bool(user.resume_text), 'resume_sections': resume_sections(user.resume_text) if user.resume_text else [],
+                'last_visit_at': user.last_visit_at}
 
     def present(job):
         result = JobOut.model_validate(job).model_dump(mode='json')
@@ -111,7 +115,7 @@ def create_app(db_url=None, vector_path=None, vector_factory=Vectors):
         statement = select(Job)
         statement = statement.where(Job.status.in_(['NEW', 'OPEN'])) if status == 'current' else statement.where(Job.status == status)
         if company:
-            statement = statement.where(Job.company == company)
+            statement = statement.where(Job.company.icontains(company.strip(), autoescape=True))
         if location:
             statement = statement.where(Job.location.icontains(location, autoescape=True))
         if employment_type:
@@ -134,7 +138,9 @@ def create_app(db_url=None, vector_path=None, vector_factory=Vectors):
         return statement
 
     def matches(user, jobs, limit=20):
-        parts = app.state.vectors.chunks(user.resume_text)[:12]
+        profile = json.loads(user.profile_json)
+        experience_text = '\n'.join(filter(None, [profile.get('skills'), profile.get('experience'), user.resume_text]))
+        parts = app.state.vectors.chunks(experience_text)[:12] if experience_text.strip() else []
         merged = {}
         for part in parts:
             for hit in app.state.vectors.search(part, [job.id for job in jobs], limit=limit):
@@ -317,22 +323,42 @@ def create_app(db_url=None, vector_path=None, vector_factory=Vectors):
             user = identify(session, authorization, required=False)
             result = present(job)
             result['eligibility'] = eligibility(job, json.loads(user.profile_json) if user else {})
-            result['connections'] = matches(user, [job], limit=1) if user and user.resume_text else []
+            result['connections'] = matches(user, [job], limit=1) if user and (user.resume_text or json.loads(user.profile_json).get('skills') or json.loads(user.profile_json).get('experience')) else []
             return result
 
     @app.get('/recommendations')
-    def recommendations(authorization: str | None = Header(None)):
+    def recommendations(q: str = Query('', max_length=2000), company: str = '', location: str = '',
+                        employment_type: str = '', recent: bool = False,
+                        days: int | None = Query(None, ge=1, le=365),
+                        limit: int = Query(20, ge=1, le=100), offset: int = Query(0, ge=0),
+                        authorization: str | None = Header(None)):
         with sessions() as session:
             user = identify(session, authorization)
-            if not user.resume_text:
-                raise HTTPException(422, 'Upload a resume first to see your matches')
-            # Stale/unverified postings and closed jobs never enter normal recommendations.
-            jobs = session.scalars(select(Job).where(Job.status.in_(['NEW', 'OPEN']),
-                Job.last_verified_at >= utcnow() - timedelta(hours=24), Job.last_verified_at <= utcnow())).all()
-            results = matches(user, jobs, limit=30)
-            preferred = json.loads(user.profile_json).get('preferred_roles', '')
-            return {'items': results, 'total': len(results), 'explore': sorted({job['job_category'] for job in results if job.get('job_category')}),
-                    'preferred_roles': preferred, 'note': 'Ranked across job titles by resume evidence. Review eligibility separately.'}
+            profile = json.loads(user.profile_json)
+            if not (user.resume_text or profile.get('skills') or profile.get('experience')):
+                return {'items': [], 'total': 0, 'needs_info': True,
+                        'note': 'Add skills and experience or a resume in Info to find jobs that fit you.'}
+            statement = current_filters(company=company, location=location,
+                employment_type=employment_type, recent=recent, days=days)
+            jobs = session.scalars(statement.where(Job.last_verified_at >= utcnow() - timedelta(hours=24),
+                Job.last_verified_at <= utcnow())).all()
+            # Retrieve broadly before qualification filtering, so disqualified top hits do not
+            # hide a qualified lower-ranked role. Keep exact requirement checks independent.
+            results = matches(user, jobs, limit=len(jobs)) if jobs else []
+            results = [item for item in results if item['match'] in ('Excellent Match', 'Strong Match')
+                and item['eligibility']['label'] != 'Not eligible'
+                and not any(check['result'] == 'Unknown' for check in item['eligibility']['checks'])]
+            desired = q.strip() or profile.get('preferred_roles', '').strip()
+            if desired and results:
+                role_hits = {hit['job_id']: hit for hit in app.state.vectors.search(desired,
+                    [item['id'] for item in results], limit=len(results)) if hit['distance'] < .48}
+                results = [dict(item, preference_distance=role_hits[item['id']]['distance'])
+                           for item in results if item['id'] in role_hits]
+                results.sort(key=lambda item: (item['distance'] + item['preference_distance']) / 2)
+            for item in results:
+                item['action'] = 'APPLY NOW' if item['eligibility']['label'] == 'Likely eligible' else 'REVIEW & APPLY'
+            return {'items': results[offset:offset + limit], 'total': len(results),
+                    'note': 'Best supported fits first. Known eligibility failures and unresolved recognized requirements are excluded. Review the full posting before applying.'}
 
     @app.post('/jobs/{job_id}/save')
     def save(job_id: str, authorization: str | None = Header(None)):

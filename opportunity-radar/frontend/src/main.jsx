@@ -31,8 +31,6 @@ import {
   mergeSaved,
   jobType,
   verifiedOpen,
-  cacheJobs,
-  cachedFeed,
 } from "./browser-store.js";
 
 const REPO =
@@ -134,7 +132,7 @@ function App() {
     location: "",
     employment_type: "",
     status: "current",
-    student: false,
+    recent: false,
     days: "",
   });
   const [page, setPage] = useState(0);
@@ -152,7 +150,6 @@ function App() {
   const [authMode, setAuthMode] = useState("login");
   const [sources, setSources] = useState([]);
   const [profile, setProfile] = useState({});
-  const [resumeResult, setResumeResult] = useState(null);
   const [newSinceVisit, setNewSinceVisit] = useState(null);
 
   async function request(path, options = {}) {
@@ -235,6 +232,8 @@ function App() {
         if (current) {
           setUser(u);
           setProfile(u.profile);
+          setFilters((f) => ({ ...f, location: u.profile.preferred_locations || "", employment_type: u.profile.preferred_job_type || "" }));
+          setLocationInput(u.profile.preferred_locations || "");
         }
       })
       .catch(() => {
@@ -275,60 +274,38 @@ function App() {
       setError("");
       return;
     }
-    if (view === "matches" && !token) {
+    if (view === "discover" && !token) {
       setData(null);
       setBusy(false);
       return;
     }
     let current = true;
-    const isFeed = view === "discover" || view === "recent";
-    const activeFilters = view === "recent" ? { status: "current" } : filters;
-    const cached =
-      isFeed && (!search || view === "recent")
-        ? cachedFeed(localStorage, activeFilters, view === "recent")
-        : [];
-    if (cached.length)
-      setData({
-        items: cached.slice(page * 20, page * 20 + 20),
-        total: cached.length,
-        offline: true,
-        view,
-      });
-    setBusy(!cached.length);
+    const { status, ...activeFilters } = filters;
+    setBusy(true);
     setError("");
     const params = new URLSearchParams({ limit: 20, offset: page * 20 });
     Object.entries(activeFilters).forEach(([key, value]) => {
       if (value !== "" && value !== false) params.set(key, value);
     });
-    if (view === "recent") params.set("recent", "true");
     if (search && view === "discover") params.set("q", search);
-    request(view === "matches" ? "/recommendations" : `/jobs?${params}`)
+    const timer = setTimeout(() => request(`/recommendations?${params}`)
       .then((result) => {
         if (!current) return;
-        if (isFeed) cacheJobs(localStorage, result.items);
         setData({ ...result, view });
       })
       .catch((err) => {
         if (!current) return;
-        if (cached.length)
-          setData({
-            items: cached.slice(page * 20, page * 20 + 20),
-            total: cached.length,
-            offline: true,
-            view,
-          });
-        else {
-          setData(null);
-          setError(err.message);
-        }
+        setData(null);
+        setError(err.message);
       })
       .finally(() => {
         if (current) setBusy(false);
-      });
+      }), 250);
     return () => {
       current = false;
+      clearTimeout(timer);
     };
-  }, [api, view, search, filters, page, refresh, token]);
+  }, [api, view, search, filters, page, refresh, token, user?.id]);
 
   async function action(work) {
     setSaving(true);
@@ -392,11 +369,12 @@ function App() {
     setPage(0);
     setView("discover");
   }
-  function shortcut(text, student = false) {
-    setQ(text);
-    setSearch(text);
-    setFilters((f) => ({ ...f, student }));
-    setView("discover");
+  function clearFilters() {
+    setFilters({ company: "", location: "", employment_type: "", status: "current", recent: false, days: "" });
+    setLocationInput("");
+    setQ("");
+    setSearch("");
+    setPage(0);
   }
   function changeStatus(job, status, notes) {
     try {
@@ -433,13 +411,11 @@ function App() {
         ? responseData
         : null;
   const items = data?.items || [];
-  const needsAccount = ["matches", "profile"].includes(view) && !user;
+  const needsAccount = ["profile"].includes(view) && !user;
   const titles = {
     discover: "Find your next opportunity.",
-    matches: "Your experience. New possibilities.",
     applications: "Every next step, in one place.",
     profile: "Bring your experience to the search.",
-    recent: "See what just opened.",
   };
 
   return (
@@ -454,8 +430,7 @@ function App() {
         <nav aria-label="Main navigation">
           {[
             ["discover", "Jobs"],
-            ["matches", "For you"],
-            ["recent", "Recently opened"],
+            ["profile", "Info"],
             ["applications", `Saved (${savedRoles.length})`],
           ].map(([id, label]) => (
             <button
@@ -492,7 +467,7 @@ function App() {
           </h1>
           <p>
             {view === "discover"
-              ? "Explore real roles. Discover where your experience could take you."
+              ? "Jobs matched to your experience and preferences, with your strongest fits first."
               : view === "matches"
                 ? "Connections grounded in your resume, with eligibility checked separately."
                 : view === "applications"
@@ -529,35 +504,8 @@ function App() {
                 </button>
               </form>
               <div className="suggestions">
-                <span>A few places to start</span>
-                <button onClick={() => shortcut("", true)}>
-                  Students & early careers
-                </button>
-                <button
-                  onClick={() =>
-                    shortcut(
-                      "understand customer needs and shape product direction",
-                    )
-                  }
-                >
-                  Product & people
-                </button>
-                <button
-                  onClick={() =>
-                    shortcut(
-                      "build reliable software and solve technical problems",
-                    )
-                  }
-                >
-                  Engineering
-                </button>
-                <button
-                  onClick={() =>
-                    shortcut("observe how people use interactive interfaces")
-                  }
-                >
-                  Design & research
-                </button>
+                <span>{user ? 'Your skills, experience, and saved preferences shape these results.' : 'Sign in and add your information to see jobs that fit you.'}</span>
+                <button onClick={() => setView("profile")}>{user ? 'Edit my info' : 'Add my info'}</button>
               </div>
             </>
           )}
@@ -603,36 +551,17 @@ function App() {
               <div className="filter-heading">
                 <h2>Refine your search</h2>
                 <button
-                  onClick={() => {
-                    setFilters({
-                      company: "",
-                      location: "",
-                      employment_type: "",
-                      status: "current",
-                      student: false,
-                      days: "",
-                    });
-                    setLocationInput("");
-                    setQ("");
-                    setSearch("");
-                  }}
+                  onClick={clearFilters}
                 >
                   Clear
                 </button>
               </div>
               <label className="student-toggle">
-                <input
-                  type="checkbox"
-                  checked={filters.student}
-                  onChange={(e) =>
-                    setFilters({ ...filters, student: e.target.checked })
-                  }
-                />
-                Students & early careers
+                <input type="checkbox" checked={filters.recent}
+                  onChange={(e) => setFilters({ ...filters, recent: e.target.checked })} />
+                Recently opened
               </label>
-              <p className="filter-help">
-                Uses title signals, not an eligibility guarantee.
-              </p>
+              <p className="filter-help">Posted or first discovered in the past seven days.</p>
               <details open>
                 <summary>
                   Locations <ChevronDown size={17} />
@@ -651,18 +580,9 @@ function App() {
                 <summary>
                   Companies <ChevronDown size={17} />
                 </summary>
-                <select
-                  aria-label="Company"
-                  value={filters.company}
-                  onChange={(e) =>
-                    setFilters({ ...filters, company: e.target.value })
-                  }
-                >
-                  <option value="">All companies</option>
-                  {stats?.companies?.map((company) => (
-                    <option key={company}>{company}</option>
-                  ))}
-                </select>
+                <input aria-label="Company" placeholder="Any company, or enter a name"
+                  value={filters.company} onChange={(e) => setFilters({ ...filters, company: e.target.value })} />
+                <p className="filter-help">Search companies in the available postings. Leave blank for all.</p>
               </details>
               <details open>
                 <summary>
@@ -681,26 +601,6 @@ function App() {
                   <option>Part-time</option>
                   <option>Contract</option>
                 </select>
-              </details>
-              <details open>
-                <summary>
-                  Posting status <ChevronDown size={17} />
-                </summary>
-                {[
-                  ["current", "All current"],
-                  ["NEW", "Newly discovered"],
-                  ["CLOSED", "Closed history"],
-                ].map(([id, label]) => (
-                  <label className="radio-label" key={id}>
-                    <input
-                      type="radio"
-                      name="status"
-                      checked={filters.status === id}
-                      onChange={() => setFilters({ ...filters, status: id })}
-                    />
-                    {label}
-                  </label>
-                ))}
               </details>
               <details>
                 <summary>
@@ -733,13 +633,11 @@ function App() {
                 <div>
                   <h2>
                     {data
-                      ? `${data.total.toLocaleString()} ${search ? "semantic matches" : "opportunities"}`
+                      ? `${data.total.toLocaleString()} matching ${data.total === 1 ? "opportunity" : "opportunities"}`
                       : "Explore opportunities"}
                   </h2>
                   <span>
-                    {search
-                      ? "Ranked by meaning · up to 100 results"
-                      : "Newest discoveries first"}
+                    Best fit first · based on your information
                   </span>
                 </div>
                 <div className="result-actions">
@@ -766,7 +664,13 @@ function App() {
                   </button>
                 </div>
               </div>
-              {busy ? (
+              {!user ? (
+                <Empty title="Find jobs that fit you." text="Sign in, then add your skills, experience, and preferences in Info."
+                  action="Sign in or create account" onClick={() => setModal("auth")} />
+              ) : data?.needs_info ? (
+                <Empty title="Tell us about your experience." text="Add your skills and experience or a resume before we recommend jobs."
+                  action="Add my info" onClick={() => setView("profile")} />
+              ) : busy ? (
                 <Loading />
               ) : error ? (
                 <Empty
@@ -778,9 +682,9 @@ function App() {
               ) : !items.length ? (
                 <Empty
                   title="No opportunities match these filters."
-                  text="Try a broader description or adjust the filters."
-                  action="Clear search"
-                  onClick={() => shortcut("")}
+                  text="We found no strong fits with enough qualification information. Check your Info, adjust your preferences, or try again after new jobs arrive."
+                  action="Clear filters"
+                  onClick={clearFilters}
                 />
               ) : (
                 items.map((job) => (
@@ -825,63 +729,10 @@ function App() {
         {needsAccount && (
           <Empty
             title="Make this search yours."
-            text="Sign in to add your resume and find personalized matches. You can save and track roles without an account."
+            text="Sign in to save your information, skills, experience, and resume, and find personalized matches."
             action="Sign in or create account"
             onClick={() => setModal("auth")}
           />
-        )}
-        {view === "matches" && user && (
-          <section className="content-page">
-            {busy ? (
-              <Loading />
-            ) : error ? (
-              <Empty
-                title="Start with your experience."
-                text={error}
-                action="Upload my resume"
-                onClick={() => setView("profile")}
-              />
-            ) : (
-              <>
-                <div className="section-row">
-                  <h2>What could you apply to next?</h2>
-                  <span>{data?.total ?? 0} resume-based matches</span>
-                </div>
-                <p className="muted">
-                  Recommendations exclude closed jobs and postings not verified
-                  within 24 hours. “Save” means review first; “Apply now”
-                  requires checked eligibility.
-                </p>
-                {!!data?.explore?.length && (
-                  <div className="explore-careers">
-                    <Sparkles size={20} />
-                    <div>
-                      <strong>Discover directions beyond your search</strong>
-                      <p>
-                        Your resume connects to roles in{" "}
-                        {data.explore.slice(0, 5).join(", ")}.
-                      </p>
-                    </div>
-                  </div>
-                )}
-                {items.map((job) => (
-                  <JobCard
-                    key={job.id}
-                    job={job}
-                    save={save}
-                    saved={savedRoles.some((row) => row.job.id === job.id)}
-                    open={openJob}
-                  />
-                ))}
-                {!items.length && (
-                  <Empty
-                    title="No sufficiently relevant, freshly verified matches yet."
-                    text="Try again later or add more detail to your resume."
-                  />
-                )}
-              </>
-            )}
-          </section>
         )}
         {view === "applications" && (
           <section className="content-page">
@@ -970,11 +821,14 @@ function App() {
                     body: JSON.stringify(profile),
                   });
                   setUser(u);
-                  notify("Profile saved.");
+                  setFilters((f) => ({ ...f, location: u.profile.preferred_locations || "", employment_type: u.profile.preferred_job_type || "" }));
+                  setLocationInput(u.profile.preferred_locations || "");
+                  setRefresh((x) => x + 1);
+                  notify("Info saved. Your job matches will use these details.");
                 });
               }}
             >
-              <h2>Your profile</h2>
+              <h2>Your information</h2>
               <p className="muted">
                 Fill in what you’re comfortable sharing. Unknowns stay unknown.
               </p>
@@ -983,7 +837,7 @@ function App() {
                 ["school", "School"],
                 ["major", "Major"],
                 ["preferred_roles", "Preferred roles"],
-                ["preferred_locations", "Preferred locations"],
+                ["preferred_locations", "Preferred location (city, country, or remote)"],
               ].map(([key, label]) => (
                 <label key={key}>
                   {label}
@@ -1002,6 +856,22 @@ function App() {
                   />
                 </label>
               ))}
+              <label>Skills
+                <textarea rows={3} maxLength={4000} value={profile.skills || ""}
+                  placeholder="For example: Python, user interviews, data analysis"
+                  onChange={(e) => setProfile({ ...profile, skills: e.target.value })} />
+              </label>
+              <label>Experience and projects
+                <textarea rows={5} maxLength={8000} value={profile.experience || ""}
+                  placeholder="Describe what you have done, built, or studied."
+                  onChange={(e) => setProfile({ ...profile, experience: e.target.value })} />
+              </label>
+              <label>Preferred job type
+                <select value={profile.preferred_job_type || ""}
+                  onChange={(e) => setProfile({ ...profile, preferred_job_type: e.target.value })}>
+                  <option value="">All types</option><option>Internship</option><option>Full-time</option><option>Part-time</option><option>Contract</option>
+                </select>
+              </label>
               <div className="form-columns">
                 <label>
                   Graduation date
@@ -1058,7 +928,7 @@ function App() {
                 </select>
               </label>
               <button className="blue-button" disabled={saving}>
-                Save profile
+                Save info
               </button>
             </form>
             <div>
@@ -1066,12 +936,12 @@ function App() {
                 <div className="resume-icon">
                   <FileText size={32} />
                 </div>
-                <h2>Your experience, in your words.</h2>
+                <h2>{user.has_resume ? "Your saved resume" : "Add a resume"}</h2>
                 <p>
-                  Upload your resume to find opportunities related to your
-                  skills, projects, and experience. PDF and plain text are
-                  supported.
+                  {user.has_resume ? "Resume uploaded and saved to your account. View the saved text below, or replace it when your experience changes." : "Add a PDF or text resume, or enter your skills and experience in the form. Either can help us find relevant roles."}
                 </p>
+                <details open={!user.has_resume} key={String(user.has_resume)}>
+                  <summary>{user.has_resume ? "Replace saved resume" : "Upload a resume"}</summary>
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -1084,8 +954,8 @@ function App() {
                         method: "POST",
                         body: form,
                       });
-                      setResumeResult(result);
-                      setUser({ ...user, has_resume: true });
+                      setUser({ ...user, has_resume: true, resume_sections: result.sections });
+                      setRefresh((x) => x + 1);
                       notify("Resume indexed. Your matches are ready.");
                     });
                   }}
@@ -1111,11 +981,12 @@ function App() {
                     {saving ? "Processing…" : "Upload & find connections"}
                   </button>
                 </form>
+                </details>
                 {user.has_resume && (
                   <div className="resume-actions">
                     <button
                       className="text-button"
-                      onClick={() => setView("matches")}
+                      onClick={() => setView("discover")}
                     >
                       See my matches <ArrowRight size={16} />
                     </button>
@@ -1124,8 +995,8 @@ function App() {
                       onClick={() =>
                         action(async () => {
                           await request("/resume", { method: "DELETE" });
-                          setUser({ ...user, has_resume: false });
-                          setResumeResult(null);
+                          setUser({ ...user, has_resume: false, resume_sections: [] });
+                          setRefresh((x) => x + 1);
                           notify("Resume text and vectors deleted.");
                         })
                       }
@@ -1134,13 +1005,11 @@ function App() {
                     </button>
                   </div>
                 )}
-                {resumeResult && (
+                {user.has_resume && (
                   <div className="resume-preview">
-                    <strong>
-                      {resumeResult.chunks} searchable chunks created
-                    </strong>
-                    {resumeResult.sections.map((section, i) => (
-                      <details key={i}>
+                    <strong>Saved resume text</strong>
+                    {(user.resume_sections || []).map((section, i) => (
+                      <details key={i} open={i === 0}>
                         <summary>{section.section}</summary>
                         <pre>{section.text}</pre>
                       </details>
@@ -1167,73 +1036,7 @@ function App() {
             </div>
           </section>
         )}
-        {view === "recent" && (
-          <section className="content-page">
-            <div className="section-row">
-              <h2>Recently opened opportunities</h2>
-              <span>Past seven days</span>
-            </div>
-            <p className="muted">
-              Employer posting dates are shown when available. “First
-              discovered” means we found the role recently; its original posting
-              date wasn’t provided.
-            </p>
-            {busy ? (
-              <Loading />
-            ) : error ? (
-              <Empty
-                title="Recent opportunities are temporarily unavailable."
-                text={error}
-                action="Try again"
-                onClick={() => setRefresh((x) => x + 1)}
-              />
-            ) : items.length ? (
-              items.map((job) => (
-                <div key={job.id}>
-                  <div className="recent-date">
-                    {job.date_posted ? "Posted" : "First discovered"}{" "}
-                    {time(job.date_posted || job.first_seen_at)}
-                  </div>
-                  <JobCard
-                    job={job}
-                    save={save}
-                    saved={savedRoles.some((row) => row.job.id === job.id)}
-                    open={openJob}
-                  />
-                </div>
-              ))
-            ) : (
-              <Empty
-                title="No recent openings found."
-                text="Check back soon, or explore all current opportunities."
-                action="Browse all roles"
-                onClick={() => setView("discover")}
-              />
-            )}
-            {data?.total > 20 && (
-              <div className="pagination">
-                <button
-                  className="outline-button"
-                  disabled={!page}
-                  onClick={() => setPage(page - 1)}
-                >
-                  Previous
-                </button>
-                <span>
-                  {page * 20 + 1}–{Math.min(page * 20 + 20, data.total)} of{" "}
-                  {data.total}
-                </span>
-                <button
-                  className="outline-button"
-                  disabled={(page + 1) * 20 >= data.total}
-                  onClick={() => setPage(page + 1)}
-                >
-                  Next
-                </button>
-              </div>
-            )}
-          </section>
-        )}
+
       </main>
       <footer className="site-footer">
         <a className="logo" href="./">
@@ -1575,7 +1378,7 @@ function Evidence({ match }) {
       </div>
       <div className="evidence-grid">
         <div>
-          <span>YOUR RESUME · EXACT PASSAGE</span>
+          <span>YOUR EXPERIENCE · EXACT PASSAGE</span>
           <blockquote>{match.resume_evidence}</blockquote>
         </div>
         <div>

@@ -116,6 +116,10 @@ def test_runtime_addition_semantic_retrieval_resume_and_index_retry(app):
         upload=client.post('/resume',headers=auth,files={'file':('resume.txt',text,'text/plain')})
         assert upload.status_code==200,upload.text
         assert upload.json()['chunks']>0
+        saved=client.get('/me',headers=auth).json()
+        assert saved['has_resume'] and saved['resume_sections']==upload.json()['sections']
+        other=account(client,'resume-other@example.com')
+        assert client.get('/me',headers=other).json()['resume_sections']==[]
         assert client.get('/recommendations',headers=auth).json()['items']==[]
         assert client.delete('/resume',headers=auth).status_code==200
         assert not client.get('/me',headers=auth).json()['has_resume']
@@ -153,10 +157,11 @@ def test_resume_evidence_and_ineligibility_remain_separate(app):
         resume=b'EXPERIENCE\nBuild platforms and tooling to detect and respond to corporate security threats. Perform code audits and technical assessments.'
         assert client.post('/resume',headers=auth,files={'file':('resume.txt',resume,'text/plain')}).status_code==200
         result=client.get('/recommendations',headers=auth).json()
-        assert len(result['items'])==1
-        hit=result['items'][0]
-        assert hit['id']==job_id and hit['action']=='SKIP'
-        assert hit['eligibility']['label']=='Not eligible'
+        assert result['items']==[]  # A semantic match alone cannot recommend an ineligible job.
+        client.put('/me',headers=auth,json={'years_experience':3})
+        hit=client.get('/recommendations',headers=auth).json()['items'][0]
+        assert hit['id']==job_id and hit['action']=='APPLY NOW'
+        assert hit['eligibility']['label']=='Likely eligible'
         assert hit['resume_evidence'] in resume.decode()
         assert 'security threats' in hit['evidence']
         assert client.get('/jobs/'+job_id,headers=auth).json()['connections']
@@ -186,3 +191,42 @@ def test_job_types_group_provider_aliases_and_recent_openings_use_real_dates(app
         assert all(row['employment_type']=='Full-time' for row in full_time)
         recent=client.get('/jobs?recent=true').json()['items']
         assert {row['external_id'] for row in recent}=={'intern-a','intern-b','full-a','full-b'}
+
+
+def test_recommendations_apply_all_preferences_before_ranking(tmp_path):
+    from types import SimpleNamespace
+    class FakeVectors:
+        def __init__(self, path):
+            pass
+        def chunks(self, text):
+            return [text]
+        def search(self, query, eligible_ids=None, limit=20):
+            # Every fixture is semantically related, except an unrelated requested role.
+            if query == 'unrelated preference':
+                return []
+            return [{'job_id': key, 'distance': .2, 'match': 'Excellent Match',
+                     'evidence': 'Python software projects'} for key in eligible_ids][:limit]
+    app=create_app(f'sqlite:///{tmp_path / "filters.sqlite3"}', vector_factory=FakeVectors)
+    with TestClient(app) as client:
+        auth=account(client)
+        assert client.get('/recommendations',headers=auth).json()['needs_info']
+        with app.state.sessions() as s:
+            s.add_all([
+                record('fit',title='Software intern',company='Example Labs',location='Pittsburgh',employment_type='Intern'),
+                record('senior',title='Senior software engineer',company='Example Labs',location='Pittsburgh',employment_type='Intern'),
+                record('unknown',description='Requires 3-5 years of professional experience.',company='Example Labs',location='Pittsburgh',employment_type='Intern'),
+                record('other-company',company='Other employer',location='Pittsburgh',employment_type='Intern'),
+                record('other-type',company='Example Labs',location='Pittsburgh',employment_type='FullTime'),
+                record('old',company='Example Labs',location='Pittsburgh',employment_type='Intern',date_posted=utcnow()-timedelta(days=30)),
+                record('other-location',company='Example Labs',location='New York',employment_type='Intern')])
+            s.commit()
+        body={'skills':'Python software projects', 'experience':'Built a web application',
+              'preferred_roles':'software engineering', 'preferred_job_type':'Internship'}
+        assert client.put('/me',headers=auth,json=body).json()['profile']['skills']==body['skills']
+        params={'company':'example','location':'Pittsburgh','employment_type':'Internship','recent':'true'}
+        result=client.get('/recommendations',headers=auth,params=params).json()
+        assert [row['external_id'] for row in result['items']]==['fit']
+        assert client.get('/recommendations',headers=auth,params=params|{'company':'unmonitored'}).json()['items']==[]
+        assert client.get('/recommendations',headers=auth,params=params|{'q':'unrelated preference'}).json()['items']==[]
+        client.put('/me',headers=auth,json=body|{'years_experience':0})
+        assert [row['external_id'] for row in client.get('/recommendations',headers=auth,params=params).json()['items']]==['fit']

@@ -99,13 +99,21 @@ One vector item is a **maximum 220-token passage**, with a 30-token overlap. Chu
 
 On refresh: a first appearance becomes NEW; an existing listing becomes OPEN and updates verification; a disappeared listing becomes CLOSED, retaining its original record and closing timestamp. Reopened postings retain their original first-seen time and gain a REOPENED event. NEW is a lifecycle flag, while “discovered today” uses midnight UTC. `job_events` preserves lifecycle history for later recruiting-cycle analysis. Source identity plus canonical original URLs avoid exact duplicates; fuzzy cross-provider deduplication is not implemented.
 
+### Jobs and Info
+
+Jobs is the single personalized feed. The separate For you and Recently opened tabs have been removed. Signed-in users can supply skills and project/experience text in Info without needing a resume; uploaded resumes also contribute evidence. Preferred roles constrain results semantically. Preferred location and job type populate the Jobs filters after sign-in and after saving Info, and can be changed or cleared there. Company is an open text filter (partial, case-insensitive names), not a fixed four-company dropdown. It filters the available corpus; it does not fetch every employer on the internet. The current configured sources still cover four employers.
+
+Recommendations include only excellent/strong semantic matches. Known eligibility failures and unknown values needed for recognized requirements are excluded. Senior/staff titles receive a conservative five-year experience screen; principal/director/head/VP titles receive an eight-year screen. These thresholds are application heuristics, not claims about an employer's stated minimum. Role preference/search relevance contributes to ranking alongside experience relevance. Missing evidence produces an empty feed and a prompt to improve Info rather than unrelated jobs. Unrecognized requirements still require reviewing the original posting; the app cannot certify that someone qualifies for every job condition.
+
+Recently opened is now a checkbox within Jobs. Job type, company, location, and recency apply together before personalized ranking. The Students & early careers shortcut/filter has been removed. Info persists skills, experience, preferences, and the existing profile fields per account. A previously uploaded resume is shown as saved, with readable extracted text restored on login/reload; replacement is a collapsed action. The original PDF binary is not retained.
+
 ### Saving, returning, and recent openings
 
 The **Saved** tab opens immediately, including when the opportunity service is unavailable. A save fills the bookmark, changes its label to Saved, and updates the navigation count. Role snapshots, application statuses, dates, and notes persist in browser local storage across reloads; clearing site data removes them. This is device/browser storage, not cross-device account synchronization. Existing signed-in account saves are merged into the browser tracker when available; signed-in updates also attempt to sync to that account. Browser snapshots include public posting fields only, never resume evidence.
 
 End users are not shown backend settings or connection instructions. The app uses its configured API automatically, defaulting to localhost for the current local-only setup. Fresh job search and resume matching still require that service to be running; this UI cleanup does not create cloud hosting. Previously viewed roles can be browsed from a small browser cache during an outage, with an explicit cached-data notice and verification freshness recalculated from timestamps. Cached browsing is not presented as semantic search.
 
-**Recently opened** replaces the empty future-openings page. It selects roles with employer posting dates in the past seven days; where no date is supplied, it uses and labels First discovered instead. Known old postings do not qualify merely because they were imported today. Provider job-type variants such as Intern/Internship and FullTime/Full-time map to one label and one filter each.
+**Recently opened** is a Jobs filter. It selects roles with employer posting dates in the past seven days; where no date is supplied, it uses and labels First discovered instead. Known old postings do not qualify merely because they were imported today. Provider job-type variants such as Intern/Internship and FullTime/Full-time map to one label and one filter each.
 
 ### Runtime additions and useful retrieval
 
@@ -113,7 +121,7 @@ End users are not shown backend settings or connection instructions. The app use
 2. The API saves it, embeds its useful text, and returns only after it is searchable. Reusing an original URL returns the existing record.
 3. Search with a natural-language description. Results include the matching source passage and a heuristic similarity category, never a probability of getting hired.
 4. Open a job, review the evidence and source freshness, save it, and track its status.
-5. Upload a text/PDF resume under **My profile** and choose **For you** for resume-based recommendations with exact quotes from both texts.
+5. Add skills/experience or a text/PDF resume under **Info**, then open **Jobs** for personalized matches. The general `/jobs?q=...` API remains available for corpus-wide semantic search, including immediately searchable unverified runtime additions; those additions are excluded from verified personal recommendations.
 
 User additions are explicitly public postings in this backend instance, not private notes. They are labeled **Needs verification**, and they cannot appear in normal resume recommendations until an official source verifies them. They are still immediately searchable, satisfying runtime addition without inventing employer verification.
 
@@ -139,7 +147,7 @@ These illustrate synonym/concept retrieval, not a claim that keyword search coul
 
 Resume uploads support PDF/text up to 5 MB, 20 PDF pages, and 60,000 extracted characters. Scanned/image-only PDFs require OCR outside this app. Sections are detected from headings; originals are not invented or rewritten. Only extracted text and its vectors are retained, not the uploaded PDF binary. Users can delete resume text and vectors.
 
-Matching queries up to the first 12 token chunks of a resume against freshly verified, non-closed jobs. Long resumes may therefore have uncovered later content. The UI shows exact passages from the resume and job and states that semantic proximity is a connection, not proof of qualifications. It can surface other role families beyond the user's preferred titles.
+Matching queries up to the first 12 token chunks of combined resume/skills/experience text against freshly verified, non-closed jobs. Long resumes may therefore have uncovered later content. The UI shows exact passages from the resume and job and states that semantic proximity is a connection, not proof of qualifications. It can surface other role families beyond the user's preferred titles.
 
 Eligibility extraction supports only explicit years-of-experience requirements, unambiguous month/year graduation windows, and explicit no-sponsorship statements. It reports **Unknown** for missing profile values or unsupported requirements. Degree, location/work eligibility, and other nuanced requirements require review and are explicitly called out. “Likely eligible” means the recognized checks passed, not that every employer condition has been evaluated.
 
