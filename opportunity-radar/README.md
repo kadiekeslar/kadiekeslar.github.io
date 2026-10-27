@@ -22,7 +22,7 @@ Run the two tested queries below, inspect the retrieved passages, explain why ex
 
 ## AI-generated technical documentation
 
-This section was written with OpenAI Codex. Review it against the application. The frontend layout was informed by [Google Careers](https://www.google.com/about/careers/applications/jobs/results/), while Opportunity Radar has its own identity and is not affiliated with Google.
+This section was written with OpenAI Codex. Review it against the application. 
 
 Opportunity Radar collects real public company postings, tracks their lifecycle, and uses persistent ChromaDB to search descriptions by meaning. Resume recommendations combine retrieved evidence with conservative, separate eligibility checks and a manual application tracker. It does more than print nearest neighbors: it shows supported resume/posting connections, prioritizes actions, excludes closed/stale recommendations, and tracks decisions over time. No hosted LLM or secret API key is needed.
 
