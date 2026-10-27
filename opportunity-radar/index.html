@@ -22,9 +22,72 @@
       }
     </script>
     <script type="module">
-      // The local Python app extracts PDFs server-side. GitHub Pages cannot run
-      // Python, so the public demo extracts PDF text in the browser and sends
-      // only the extracted text to the hosted Opportunity Radar API.
+      const HOSTED_API = "https://nnzrqpvcpnhizfuxovhg.supabase.co/functions/v1/radar";
+      let currentProfile = {};
+      const nativeFetch = window.fetch.bind(window);
+
+      function advancedDegreeOnly(job) {
+        const title = String(job?.title || "");
+        const description = String(job?.description || "");
+        const text = `${title}\n${description}`;
+        const level = currentProfile.degree_level ||
+          ((currentProfile.school || currentProfile.major || currentProfile.graduation_date) ? "Bachelor" : "");
+
+        if (["Master", "MBA", "PhD"].includes(level)) return false;
+
+        const titleAdvanced = /\b(ph\.?d\.?|doctoral|doctorate|mba|master(?:'s|s)?|graduate research|graduate intern)\b/i.test(title);
+        const requiredAdvanced = /\b(ph\.?d\.?|doctoral|doctorate|mba|master(?:'s|s)?)\b.{0,80}\b(required|must|minimum|currently pursuing|enrolled)\b|\b(required|must|minimum|currently pursuing|enrolled)\b.{0,80}\b(ph\.?d\.?|doctoral|doctorate|mba|master(?:'s|s)?)\b/i.test(text);
+        return titleAdvanced || requiredAdvanced;
+      }
+
+      function tooSenior(job) {
+        const years = Number(currentProfile.years_experience ?? 0);
+        if (years >= 3) return false;
+        return /\b(senior|staff|principal|director|head of|vice president|vp)\b/i.test(String(job?.title || ""));
+      }
+
+      window.fetch = async (...args) => {
+        const response = await nativeFetch(...args);
+        const url = typeof args[0] === "string" ? args[0] : args[0]?.url || "";
+        if (!response.ok) return response;
+
+        if (url.includes("/me") || url.includes("/auth/login") || url.includes("/auth/register")) {
+          try {
+            const clone = response.clone();
+            const data = await clone.json();
+            currentProfile = data?.profile || data?.user?.profile || currentProfile;
+          } catch {}
+          return response;
+        }
+
+        if (url.includes("/recommendations")) {
+          try {
+            const data = await response.clone().json();
+            if (Array.isArray(data.items)) {
+              data.items = data.items.filter((job) => !advancedDegreeOnly(job) && !tooSenior(job));
+              data.total = data.items.length;
+              return new Response(JSON.stringify(data), {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers,
+              });
+            }
+          } catch {}
+        }
+        return response;
+      };
+
+      function hideUnknownEligibility(root = document) {
+        for (const el of root.querySelectorAll?.("span, div, p, section") || []) {
+          const text = (el.textContent || "").replace(/\s+/g, " ").trim();
+          if (/^Eligibility:?\s*Unknown$/i.test(text) || /^Unknown\s*Eligibility$/i.test(text)) {
+            el.style.display = "none";
+          }
+        }
+      }
+      new MutationObserver(() => hideUnknownEligibility()).observe(document.documentElement, { childList: true, subtree: true });
+      document.addEventListener("DOMContentLoaded", () => hideUnknownEligibility());
+
       document.addEventListener(
         "submit",
         async (event) => {
@@ -60,12 +123,12 @@
             const text = pages.join("\n\n").replace(/[ \t]+/g, " ").trim();
             if (text.length < 40) throw new Error("This PDF does not contain enough readable text. Scanned/image-only PDFs need OCR first.");
 
-            const api = localStorage.getItem("radar-api") || "https://nnzrqpvcpnhizfuxovhg.supabase.co/functions/v1/radar";
+            const api = localStorage.getItem("radar-api") || HOSTED_API;
             const key = `radar-session:${api}`;
             const token = localStorage.getItem(key) || sessionStorage.getItem(key);
             if (!token) throw new Error("Please sign in again before uploading your resume.");
 
-            const response = await fetch(`${api}/resume`, {
+            const response = await nativeFetch(`${api}/resume`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
