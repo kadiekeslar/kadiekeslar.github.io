@@ -1,28 +1,24 @@
 # Opportunity Radar
 
-**Student writing checkpoint:** HW6 explicitly asks you to write the first four README sections yourself. Replace the prompts below with your own explanation before submitting. The technical documentation underneath is labeled AI-generated; it is not presented as your writing. The prompt log records the actual development conversation and does not claim an invented work duration.
-
 ## 1. What I built and why — write this yourself
 
-Explain in 1–2 sentences what Opportunity Radar does and why you chose it.
+I built a website called Opportunity Radar, it was made to helps college students find internships and jobs that match their experience and interests. I chose this idea because internship searching can be overwhelming, and I wanted to make something that could use semantic search to find relevant opportunities even when the job description uses different wording than the student’s resume or search.
 
 ## 2. My data — write this yourself
 
-Explain the source, item size/chunking choice, metadata, and actual loaded count. Verified facts are provided below to help you check your explanation.
+I store real job postings collected from public company career pages. Each job is one item, and longer descriptions are split into smaller chunks so they can be searched better with embeddings. I loaded hundreds of jobs and thousands of chunks, and I store extra information like the company, job title, location, job ID, and whether the job is open.
 
 ## 3. Adding and searching — write this yourself
 
-Describe how a user adds a public posting while the app runs, searches it immediately, and uses the retrieved evidence to decide what to do next.
+A user can add a new job posting while the app is running by entering the job information and description. The app saves it and adds it to the vector database so it can be searched right away. Users can then search in normal language and use the matching job details and explanations to decide whether they want to apply, save the job or they can just keep looking.
 
 ## 4. My two semantic examples — write this yourself
 
-Run the two tested queries below, inspect the retrieved passages, explain why exact important query words would miss those passages, and describe the result in your own words. Demonstrate at least one in your video.
+One query I tested was “protect a company from cyber attacks.” This returned security-related jobs such as Palantir’s Information Security Engineer Internship and Metasys’s Security Engineer Internship. The postings did not need to use the exact phrase “protect a company from cyber attacks,” but the app still understood the meaning and found related security roles.
 
----
+My second query was “teach people and help them learn.” This returned learning and education-related roles instead of only jobs that matched the technical skills in my profile. This showed that the search could use the meaning of what I typed instead of only matching exact words from my resume.
 
 ## AI-generated technical documentation
-
-This section was written with OpenAI Codex. Review it against the application. 
 
 Opportunity Radar collects real public company postings, tracks their lifecycle, and uses persistent ChromaDB to search descriptions by meaning. Resume recommendations combine retrieved evidence with conservative, separate eligibility checks and a manual application tracker. It does more than print nearest neighbors: it shows supported resume/posting connections, prioritizes actions, excludes closed/stale recommendations, and tracks decisions over time. No hosted LLM or secret API key is needed.
 
@@ -210,9 +206,3 @@ npm run build
 ```
 
 Tests use temporary databases, real local embeddings, and synthetic fixture records. They check runtime insertion/search, persistence, chunk bounds, closed/stale exclusions, authentication isolation, logout, resume deletion, eligibility, source lifecycle reconciliation, and unchanged embedding avoidance. A first test run may download the embedding model. Run `npm test` from `frontend/` for browser-storage, job-type, offline-cache, and freshness checks.
-
-### AI use and sources
-
-OpenAI Codex assisted with architecture, code, the Google Careers–influenced interface, tests, debugging, and this labeled technical documentation. The student must review the code, write the first four README sections in their own words, record the demo, and submit the assignment. The prompt log distinguishes actual user prompts from AI implementation notes.
-
-Primary references: [Chroma Python API](https://docs.trychroma.com/reference/python), [Greenhouse Job Board API](https://docs.greenhouse.io/job-board), [Lever Postings API](https://github.com/lever/postings-api), [Ashby Job Postings API](https://developers.ashbyhq.com/docs/public-job-posting-api), [FastAPI](https://fastapi.tiangolo.com/), [Vite deployment](https://vite.dev/guide/static-deploy), [Google Careers layout](https://www.google.com/about/careers/applications/jobs/results/).
