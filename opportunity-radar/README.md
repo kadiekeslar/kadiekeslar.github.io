@@ -31,17 +31,6 @@ The local version is the implementation used for the vector-database requirement
 - Vector metadata includes the job ID and company
 - Raw job descriptions remain in the structured database while Chroma stores searchable chunks
 
-On October 26, 2026, the local import contained **647 real postings** and **5,065 vector chunks**:
-
-| Company | Source | Postings observed |
-| --- | --- | ---: |
-| Figma | Greenhouse | 140 |
-| Duolingo | Greenhouse | 60 |
-| Notion | Ashby | 140 |
-| Palantir | Lever | 307 |
-
-These numbers can change when the employer boards change.
-
 The local search now treats a user’s typed search as the primary semantic vector query. Resume/profile similarity is only a secondary signal, so a search such as “protect a company from cyber attacks” is not forced back toward software jobs just because the user has technical experience.
 
 ### Runtime additions
@@ -82,7 +71,7 @@ Local API: `http://127.0.0.1:8000`
 
 Public site: https://kadiekeslar.github.io/opportunity-radar/
 
-The public demo uses GitHub Pages for the frontend and a hosted Supabase backend for accounts, profiles, saved applications, and the larger hosted job feed. As of October 26, 2026, the public site showed about **7,778 current opportunities** from **31 company boards**. Those counts change as the hosted data changes.
+The public demo uses GitHub Pages for the frontend and a hosted Supabase backend for accounts, profiles, saved applications, and the larger hosted job feed.
 
 The public interface has three main sections: **Jobs, Info, and Saved**. The Jobs page includes natural-language search, location, company, job type, and recency filters. When a search is entered, the search meaning is treated as the main ranking signal and profile information is used only as a smaller secondary signal.
 
@@ -118,7 +107,7 @@ The local ChromaDB uses `PersistentClient`, so its index remains after the progr
 
 ### AI usage
 
-I used OpenAI Codex for a large part of the implementation and code changes. I used ChatGPT to help plan changes, compare the project to the assignment requirements, debug problems I found while testing, and make fixes to the GitHub/Supabase version near the deadline. The important prompts are included verbatim in `prompt_log.md`.
+I used OpenAI Codex for a large part of the implementation and code changes. I used ChatGPT to help plan changes, compare the project to the assignment requirements, debug problems I found while testing, and make fixes to the GitHub/Supabase version near the deadline
 
 ### References
 
