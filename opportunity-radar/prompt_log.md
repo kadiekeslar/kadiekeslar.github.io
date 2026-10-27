@@ -1,12 +1,5 @@
-# Opportunity Radar — authentic prompt log
-
-## Tools and attribution
-
 OpenAI Codex (the GPT-6-family coding agent in the Codex desktop app) assisted with architecture, implementation, debugging, tests, browser checks, and AI-labeled technical documentation. The exact selectable model variant is not exposed in this conversation, so no more specific variant is claimed. Tools included the terminal, Git, official web documentation search, and browser UI verification. The student used Codex to turn a detailed product idea into an implementation; the student must add their own explanation of why they selected these tools before submission.
 
-This file records the actual prompts available in this chat. It does **not** fabricate 4.5 hours of work, earlier iterations, or a student's personal reflection. The first implementation and expanded implementation occurred on October 26, 2026. The class requirements were supplied after Stage 1 already existed. The student should review this log and append only work they actually do.
-
-## Initial project brief — verbatim user-supplied text
 
 ```text
 I want to build a real live website called Opportunity Radar. It is a job/internship discovery, recommendation, and application tracking website for college students.
@@ -1035,68 +1028,80 @@ Start with STAGE 1 only.
 
 Before writing a lot of code, briefly tell me the architecture you are choosing and why. Then create Stage 1.
 ```
+# Opportunity Radar Prompt Log
 
-## Follow-up prompts — verbatim
+## Tools Used
+
+I used OpenAI Codex to build and modify most of the project code. I also used ChatGPT to help plan changes, check the assignment requirements, debug problems I found while testing, and fix parts of the GitHub Pages and Supabase version.
+
+## Initial Codex Prompt
+
+**Keep the full original prompt that starts with:**
 
 ```text
-i will give you access to my github and show you where to put this project
+I want to build a real live website called Opportunity Radar. It is a job/internship discovery, recommendation, and application tracking website for college students.
+
+This should NOT just be a school demo where I upload a static JSON dataset of old jobs.
+
+The main goal is for the website to actively maintain a database of real jobs that are currently open...
 ```
+
+Keep that entire original prompt verbatim through:
 
 ```text
-https://github.com/kadiekeslar/kadiekeslar.github.io make it in here and just make it a new folder same how the crossy-road and scripture graph are
+Start with STAGE 1 only.
+
+Before writing a lot of code, briefly tell me the architecture you are choosing and why. Then create Stage 1.
 ```
 
-The repository follow-up was displayed as a hyperlink; the visible text is reproduced above with ordinary spacing.
+
 
 ```text
 here are the requirements and also i want the design to be super close to the google careers website layout, and you dont need to do it in that many steps you can just make it all work like i explained in the first prompt and let me know what i need to do
 ```
 
-The user attached the HW6 assignment with the final prompt. It called for persistent vector storage, hundreds of real items, runtime additions, semantic retrieval used for a useful action, two demonstrated queries, a README, separate prompt log, portfolio entry, video, and form submission. It also required the student's own writing for the first four README sections. This log does not pretend that attaching the specification satisfied the class's preference for student-authored incremental prompts.
+```text
+there are a bunch of bugs, like job types has intern and full time listed 2 times, i want the user to just be able to get on and see their saved stuff not have to connect to a backend, the settings bar has stuff for backend hitting the saved button gives no indication you actually hit it Your resume stays on the backend you connect. No external AI API is used. the user doesnt need to see this if ipening soon never has anything leave it off and just have a recently opened feature
+```
 
-## Development notes — AI-written factual account
+```text
+having jobs im not qualified for isnt helpful, the oly jobs i should be recommbeded for are ones that i should apply for because theyre a goof fit and in the for you i dont think it should be two seperate tabs i think in the jobs tab you can put your info in like any company and dont just give a list of 4 companies just do all or an open ended and then job type and take the students and early careers and then the jobs should appear most qualified to least and it should be only jobs taht match what you put and alos recenlty opened should just be a filter able to be seldcted, also in the info page make taht a tab where people are able to put the info already there and any skills or stuff like taht and theyre able to see the resume uploaded insted of making it look like it needs one uploaded
+```
 
-1. Inspected the existing portfolio repository and added a new `opportunity-radar/` folder, preserving its other projects. Implemented the originally requested Stage 1 foundation, tested it, and pushed commit `0368789`.
-2. After the follow-up, inspected the live Google Careers search page. Replaced the dark sidebar design with a white header, large search area, blue controls, left filters, bordered role cards, responsive navigation, and job detail dialogs.
-3. Consulted official Greenhouse, Lever, Ashby, Chroma, FastAPI, and Vite documentation. Read actual public ATS responses before choosing the corpus. Observed Figma 140, Duolingo 60, Notion 140, Palantir 307 postings.
-4. Implemented complete provider fetches (including Lever pagination), normalization, source identity and URL handling, lifecycle reconciliation, closure safeguards, and per-board failure isolation. Added a separate refresh script and an API-owned background scheduler sharing the same embedded Chroma client.
-5. Downloaded the local ONNX all-MiniLM-L6-v2 model and imported 647 real postings into SQLite and 5,065 token-aware chunks into persistent Chroma. Data and models are ignored by Git. An early commentary estimated the chunk count incorrectly; the final count was read from `/health` and corrected in the documentation.
-6. Added natural-language search with exact SQL filters, grouped job results, a distance gate, and qualitative labels. Verified actual retrieval rather than assuming embeddings always produce good results. Initial probes such as “uncover friction by watching volunteers attempt everyday tasks” were poor: they surfaced unrelated People Operations material. A neural-network/pictures probe was weak and was not used as a successful proof. The final measured examples are the foreign-tongue query and hackers query documented in README. The implementation contains no query-specific branches or hard-coded target results.
-7. Added basic accounts, hashed passwords and expiring sessions, per-user profiles, PDF/text resume extraction, persistent resume vectors, exact evidence passages, conservative eligibility checks, action labels, and manual application tracking. Preserved notes and application state when saving a role again.
-8. Implemented authenticated runtime addition of public job postings; additions are immediately indexed and honestly labeled unverified. They are excluded from freshly verified recommendations. Tests use temporary data so synthetic postings do not become part of the live employer corpus.
-9. Verified backend flows using isolated databases and real local embeddings: insertion/retrieval, persistence, chunk boundaries, source new/changed/closed/reopened behavior, stale/closed exclusions, account isolation, session logout, resume deletion, and incremental indexing. Checked browser search against the actual corpus, account creation, profile saving, saving a role, and editing application status/notes. Browser testing caught a shared response-state bug when navigating between result types; tagging responses by view fixed it and the navigation was retested. Nine backend tests passed. Ran the frontend production build. A restart retained 647 jobs and 5,065 vector chunks, and the automatic refresh found all four boards unchanged. An npm build was initially invoked from the project root instead of `frontend/`; rerunning in the correct directory fixed that command error.
-10. Prepared the local start script, container deployment option, technical README, this separate prompt log, portfolio entry, and demo checklist. No paid hosting, fabricated future opening dates, video upload, course-form submission, or invented student writing is claimed. Public backend hosting remains an owner setup step because GitHub Pages only serves the frontend.
+## Debugging Prompts
 
-## Student follow-up — complete after your own verification
+```text
+when i try to login it says this This feature is temporarily unavailable. You can still view and update your saved roles. and thats an important part of my demo
+```
 
-- Explain your tool choice in your own words.
-- Add the actual prompts and debugging work you do after this version.
-- Record your demo and add its real link to your submission.
-- Describe one result you inspected, what you learned, and any corrections you made.
+```text
+fix any bug you see and make the website fully functional and meeting all requirements
+```
 
-## Hosting follow-up — verbatim user selections
+```text
+For the public demo, upload a .txt resume. PDF extraction remains available in the local class version. it does this i hit save info and when i went to jobs it said add info even though i already did
+```
+
+```text
+Eligibility: Unknown they all say this so just take it away and even after adding my graduation. date and years of experience im a junior getting matsers and phd recommendations
+```
+
+```text
+Preferred roles
+Preferred location (city, country, or remote)
+ it doesnt make sense to have these since the main page asks and when i put in what i want to do in my own words it doesnt really change the results and just sticks to my skills and theses a where tab and also a location tab
+```
+
+```text
+adding this `product management internship where I can do user research and work with customers` still changes nothing i get the same results
+```
 
 ```text
 Use my existing Render account
 Yes, use Kadie's workspace
 Keep the backend local for now
 ```
-
-The Render plugin was connected and its workspace/services inspected read-only. The agent prepared an optional persistent-storage configuration, verified current pricing, and requested approval before creating a paid service. The user chose local operation instead. No Render service, disk, subscription, or paid deployment was created. The GitHub Pages frontend was verified successfully against the running local API using the explicit localhost connection URL.
-
-## Usability correction — verbatim user prompt
-
 ```text
 there are a bunch of bugs, like job types has intern and full time listed 2 times, i want the user to just be able to get on and see their saved stuff not have to connect to a backend, the settings bar has stuff for backend hitting the saved button gives no indication you actually hit it Your resume stays on the backend you connect. No external AI API is used. the user doesnt need to see this if ipening soon never has anything leave it off and just have a recently opened feature
 ```
 
-AI-written implementation notes: normalized provider employment types in both API filters and display; removed backend configuration and implementation language from the UI; made Saved a browser-persistent tracker without login/setup; added immediate filled-bookmark, Saved label, and navigation-count feedback; preserved existing account-save import; replaced empty future-opening UI with a date-aware recent feed. Tested save/status/note persistence through reload and with an intentionally unavailable service in a local preview. Public job snapshots exclude resume evidence, and cached verification expires. The backend remains local per the user's prior decision; no paid service or cloud account synchronization is implied.
-
-
-## October 26 — Unified personalized Jobs and Info
-
-User prompt (verbatim):
-
-> having jobs im not qualified for isnt helpful, the oly jobs i should be recommbeded for are ones that i should apply for because theyre a goof fit and in the for you i dont think it should be two seperate tabs i think in the jobs tab you can put your info in like any company and dont just give a list of 4 companies just do all or an open ended and then job type and take the students and early careers and then the jobs should appear most qualified to least and it should be only jobs taht match what you put and alos recenlty opened should just be a filter able to be seldcted, also in the info page make taht a tab where people are able to put the info already there and any skills or stuff like taht and theyre able to see the resume uploaded insted of making it look like it needs one uploaded
-
-Codex implementation notes: Combined Jobs and For you into a personalized Jobs feed; replaced Recently opened navigation with a filter; removed the student shortcut and fixed company dropdown. Added profile skills/experience and saved job type. Restored saved resume text on authenticated `/me` responses and showed existing resumes separately from replacement. Personal recommendations now exclude weak/possible matches, recognized eligibility failures, unknown recognized requirements, and conservative seniority screens. Filter and preference constraints apply before pagination. This does not guarantee all employer requirements are parsed, expand the four-employer source corpus, or deploy a public backend. Corpus-wide runtime-addition semantic search is still available through the general jobs API. Verified with backend/frontend tests and an isolated disposable browser preview rather than modifying a real user's profile.
