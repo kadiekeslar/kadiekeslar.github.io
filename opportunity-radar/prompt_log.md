@@ -1042,10 +1042,6 @@ here are the requirements and also i want the design to be super close to the go
 ```
 
 ```text
-there are a bunch of bugs, like job types has intern and full time listed 2 times, i want the user to just be able to get on and see their saved stuff not have to connect to a backend, the settings bar has stuff for backend hitting the saved button gives no indication you actually hit it Your resume stays on the backend you connect. No external AI API is used. the user doesnt need to see this if ipening soon never has anything leave it off and just have a recently opened feature
-```
-
-```text
 having jobs im not qualified for isnt helpful, the oly jobs i should be recommbeded for are ones that i should apply for because theyre a goof fit and in the for you i dont think it should be two seperate tabs i think in the jobs tab you can put your info in like any company and dont just give a list of 4 companies just do all or an open ended and then job type and take the students and early careers and then the jobs should appear most qualified to least and it should be only jobs taht match what you put and alos recenlty opened should just be a filter able to be seldcted, also in the info page make taht a tab where people are able to put the info already there and any skills or stuff like taht and theyre able to see the resume uploaded insted of making it look like it needs one uploaded
 ```
 
