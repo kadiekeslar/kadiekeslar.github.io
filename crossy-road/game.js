@@ -3,6 +3,12 @@
 // FULL PITTSBURGH VERSION
 // ============================================================
 
+import {
+  findSupportingLog,
+  getMoveTarget,
+  hasVehicleCollision,
+} from "./game-logic.js";
+
 const TILE = 4;
 
 const WORLD_WIDTH = 52;
@@ -2547,33 +2553,11 @@ function tryMove(
   }
 
 
-  const nextX =
-    currentGridX +
-    dx;
-
-
-  const nextLane =
-    currentLaneIndex +
-    laneMove;
-
-
-  // Keeps player near middle,
-  // buildings remain visible
-
-  if (
-    Math.abs(nextX) > 3
-  ) {
-
+  const target = getMoveTarget(currentGridX, currentLaneIndex, dx, laneMove);
+  if (target === null) {
     return;
   }
-
-
-  if (
-    nextLane < 0
-  ) {
-
-    return;
-  }
+  const { nextX, nextLane } = target;
 
 
   while (
@@ -2819,41 +2803,6 @@ function finishHop() {
 
 
 // ============================================================
-// LOG DETECTION
-// ============================================================
-
-function getLog(
-  lane
-) {
-
-  for (
-    const log of
-    lane.objects
-  ) {
-
-    if (
-      Math.abs(
-        log.position.x -
-        chicken.position.x
-      )
-
-      <
-
-      log.userData.length /
-      2 +
-      0.2
-    ) {
-
-      return log;
-    }
-  }
-
-
-  return null;
-}
-
-
-// ============================================================
 // WATER CHECK
 // ============================================================
 
@@ -2868,7 +2817,7 @@ function checkLanding() {
   if (
     lane &&
     lane.type === "river" &&
-    !getLog(lane)
+    !findSupportingLog(chicken.position.x, lane.objects)
   ) {
 
     lose();
@@ -2888,45 +2837,8 @@ function checkCars() {
     ];
 
 
-  if (
-    !lane
-  ) {
-
-    return;
-  }
-
-
-  if (
-    lane.type !== "street" &&
-    lane.type !== "bridge"
-  ) {
-
-    return;
-  }
-
-
-  for (
-    const car of
-    lane.objects
-  ) {
-
-    if (
-      Math.abs(
-        chicken.position.x -
-        car.position.x
-      )
-
-      <
-
-      car.userData.length /
-      2 +
-      0.3
-    ) {
-
-      lose();
-
-      return;
-    }
+  if (hasVehicleCollision(chicken.position.x, lane)) {
+    lose();
   }
 }
 
@@ -3069,7 +2981,7 @@ function updateRiverPlayer(
 
 
   const log =
-    getLog(lane);
+    findSupportingLog(chicken.position.x, lane.objects);
 
 
   if (
