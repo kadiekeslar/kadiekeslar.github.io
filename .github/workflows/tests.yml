@@ -1,0 +1,16 @@
+name: tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check that the test file has content
+        run: test -s crossy-road/tests/game-logic.test.js
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "26"
+      - run: node --test
+        working-directory: crossy-road
