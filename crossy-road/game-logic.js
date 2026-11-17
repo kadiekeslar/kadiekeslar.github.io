@@ -3,7 +3,7 @@ export function getMoveTarget(currentGridX, currentLaneIndex, dx, laneMove) {
   const nextLane = currentLaneIndex + laneMove;
 
   // Keep the player near the middle so the buildings stay visible.
-  if (Math.abs(nextX) > 3 || nextLane < 0) {
+  if (Math.abs(nextX) >= 3 || nextLane < 0) {
     return null;
   }
 
