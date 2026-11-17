@@ -1,4 +1,4 @@
-# prompt_log.md
+
 
 I used OpenAI Codex
 
