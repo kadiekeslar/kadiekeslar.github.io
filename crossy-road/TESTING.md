@@ -1,6 +1,6 @@
 I started with my HW2 game, 412 Crossy Road
 
-## What moved and why
+## what moved and why
 
 - getMoveTarget works out where the chicken would move and whether that move is allowed
 - findSupportingLog checks which log, if any, is under the chicken
@@ -16,7 +16,7 @@ directly from the game. It now takes that position as an argument.
 The HTML script tag also changed to type="module" so the browser could load the
 imports. The existing controls already used addEventListener.
 
-## What the tests cover
+## what the tests cover
 
 There are 17 tests, they check whether the chicken can move to both edges, whether it can move back to lane 0, and whether moves outside the allowed area are blocked.
 
@@ -41,7 +41,7 @@ cd crossy-road
 node --test
 ```
 
-## Breaking the code on purpose
+## breaking the code on purpose
 
 | Change to one line | Test that caught it | Failure message and what it means |
 |---|---|---|
@@ -111,7 +111,7 @@ Expected values to be strictly equal:
 true !== false
 ```
 
-## Fake tests
+## fake tests
 
 None of these five changes slipped through the tests. No fake test was found
 during these attempts, so there was no fake test to fix or delete. 
@@ -125,7 +125,7 @@ For the failing run, Codex pushed the edge-column bug from the first row.
 GitHub failed on the test that checks whether the chicken can reach columns
 -3 and 3. After the agent fixed the source, the tests passed again.
 
-## Verifier experiment
+## verifier experiment
 
 After the broken code was pushed, Codex opened a fresh agent session with
 no earlier chat history. It gave the agent the local copy of the pushed repo
