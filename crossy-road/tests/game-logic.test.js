@@ -1,4 +1,3 @@
-// Node provides the test runner and assertions that compare actual and expected results.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 // Import the three game rules so they can be tested without opening the browser.
