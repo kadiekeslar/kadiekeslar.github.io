@@ -7,13 +7,9 @@ import {
   findSupportingLog,
   hasVehicleCollision,
 } from "../game-logic.js";
-// getMoveTarget takes the current column, current lane, sideways change, and lane change.
-// A valid move returns the next column and lane. A blocked move returns null.
-// deepEqual compares the properties of the returned object.
-// equal checks a single value, or checks that the exact same object was returned.
 
+//start in column -1, lane 4, moving forward one lane should reach lane 5 in column -1
 test("forward movement updates the lane and keeps the column", () => {
-  // Start in column -1, lane 4. Moving forward one lane should reach lane 5 in column -1.
   assert.deepEqual(getMoveTarget(-1, 4, 0, 1), { nextX: -1, nextLane: 5 });
 });
 
