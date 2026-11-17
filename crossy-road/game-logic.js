@@ -2,8 +2,8 @@ export function getMoveTarget(currentGridX, currentLaneIndex, dx, laneMove) {
   const nextX = currentGridX + dx;
   const nextLane = currentLaneIndex + laneMove;
 
-  // Keep the player near the middle so the buildings stay visible.
-  if (Math.abs(nextX) >= 3 || nextLane < 0) {
+  // Keep the player within the playable columns, including both outer columns.
+  if (Math.abs(nextX) > 3 || nextLane < 0) {
     return null;
   }
 
