@@ -3,16 +3,16 @@
 I used OpenAI Codex
 
 
-- Look through my project and help me separate the logic from the user interface. Do not fix any existing bugs because I need to find them through testing.
+- look through my project and help me separate the logic from the user interface, do not fix any existing bugs because I need to find them through testing
 
-- Review the refactored code and make sure everything still works the same way as before. Do not fix any bugs you find.
+- review the refactored code and make sure everything still works the same way as before do not fix any bugs you find
 
-- I added comments explaining the behavior I want to test. Review my comments and the tests I wrote to see if they correctly check the expected behavior.
+- I added comments explaining the behavior I want to test, review my comments and the tests I wrote to see if they correctly check the expected behavior
 
-- Review my tests and let me know if they are missing any important cases or if anything needs to be changed. Do not change the original code.
+- review my tests and let me know if they are missing any important cases or if anything needs to be changed, do not change the original code
 
-- Run the tests I wrote and explain any failures. Help me understand what is causing the problem.
+-run the tests I wrote and explain any failures help me understand what is causing the problem
 
-- Fix the cause of the failing test without removing or changing my original tests.
+- fix the cause of the failing test without removing or changing my original tests
 
 I used OpenAI Codex to help refactor my project, review the test cases I wrote based on my comments, run the tests, investigate failures, and check my final code.
