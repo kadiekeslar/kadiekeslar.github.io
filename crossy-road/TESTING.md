@@ -165,4 +165,4 @@ I think the agent did a good job fixing the actual cause of the bug instead of j
 
 ## AI documentation 
 
-I used OpenAI Codex to help me understand the existing code, refactor the project, run tests, and investigate the bug that was found. I reviewed the AI's changes and test results to make sure they matched the assignment requirements. I made sure the refactoring step did not intentionally fix any existing bugs.
+I used OpenAI Codex to help refactor my Crossy Road project and separate the game logic from the interface. I wrote tests and added comments explaining what I wanted each test to check. I then used Codex to review my tests and help run them. I also used Codex for the bug-fixing experiment to see if it could find and repair the problem without changing the original tests.
