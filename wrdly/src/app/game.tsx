@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useReducer, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useReducer, useRef, useState } from 'react';
+import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { enterKey, keyboardMarks, MAX_GUESSES, newGame } from '@/game/engine';
 import { colors } from '@/game/theme';
@@ -19,13 +19,48 @@ export default function GameScreen() {
 
 function Round({ length, answer, onReplay }: { length: WordLength; answer: string; onReplay: () => void }) {
   const [game, dispatch] = useReducer(enterKey, answer, newGame);
+  const [revealingRow, setRevealingRow] = useState<number | null>(null);
+  const inputLocked = useRef(false);
+  const [flips] = useState(() => Array.from({ length }, () => new Animated.Value(0)));
+  const [keyboardWidth, setKeyboardWidth] = useState(0);
   const [gameId] = useState(() => `${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const [board, setBoard] = useState({ width: 320, height: 330 });
   const [saveState, setSaveState] = useState<'saving' | 'saved' | 'error'>('saving');
   const [retry, setRetry] = useState(0);
   const { recordResult } = useStats();
-  const finished = game.status !== 'playing';
-  const marks = keyboardMarks(game.guesses);
+  const isRevealing = revealingRow !== null;
+  const finished = game.status !== 'playing' && !isRevealing;
+  const marks = keyboardMarks(isRevealing ? game.guesses.slice(0, revealingRow) : game.guesses);
+  const handleKey = (key: string) => {
+    // The ref closes the gap before React renders the disabled keyboard.
+    if (inputLocked.current) return;
+    const next = enterKey(game, key);
+    if (next.guesses.length > game.guesses.length) {
+      inputLocked.current = true;
+      flips.forEach(flip => flip.setValue(0));
+      setRevealingRow(game.guesses.length);
+    }
+    dispatch(key);
+  };
+
+  useEffect(() => {
+    if (revealingRow === null) return;
+    const animation = Animated.sequence(flips.flatMap(flip => [
+      Animated.timing(flip, {
+        toValue: 1,
+        duration: 460,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.delay(50),
+    ]));
+    animation.start(({ finished: completed }) => {
+      if (!completed) return;
+      setRevealingRow(null);
+      inputLocked.current = false;
+    });
+    return () => animation.stop();
+  }, [revealingRow, flips]);
   const size = Math.max(24, Math.min(56, Math.floor((board.width - 5 * (length - 1)) / length), Math.floor((board.height - 35) / 6)));
   const goHome = () => router.canGoBack() ? router.back() : router.replace('/');
 
@@ -51,13 +86,25 @@ function Round({ length, answer, onReplay }: { length: WordLength; answer: strin
         <View style={styles.board} onLayout={e => setBoard({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}>
           {Array.from({ length: MAX_GUESSES }, (_, row) => {
             const guess = game.guesses[row];
-            const current = row === game.guesses.length && !finished;
+            const current = row === game.guesses.length && !finished && !isRevealing;
             return <View key={row} style={styles.gridRow}>
               {Array.from({ length }, (_, col) => {
                 const letter = guess?.word[col] ?? (current ? game.current[col] : '') ?? '';
                 const mark = guess?.marks[col];
-                return <View key={col} accessible accessibilityLabel={`Row ${row + 1}, letter ${col + 1}: ${letter || 'empty'}${mark ? `, ${mark === 'correct' ? 'correct position' : mark === 'present' ? 'wrong position' : 'not in word'}` : ''}`} style={[styles.tile, { width: size, height: size }, letter && !mark ? styles.filled : null, mark && { backgroundColor: colors[mark], borderColor: colors[mark] }]}>
-                  <Text maxFontSizeMultiplier={1.2} style={[styles.letter, { fontSize: Math.floor(size * 0.5) }]}>{letter}</Text>
+                const flipping = row === revealingRow;
+                const label = `Row ${row + 1}, letter ${col + 1}: ${letter || 'empty'}${mark && !flipping ? `, ${mark === 'correct' ? 'correct position' : mark === 'present' ? 'wrong position' : 'not in word'}` : ''}`;
+                const letterText = <Text maxFontSizeMultiplier={1.2} style={[styles.letter, { fontSize: Math.floor(size * 0.5) }]}>{letter}</Text>;
+                return <View key={col} accessible accessibilityLabel={label} style={{ width: size, height: size }}>
+                  {flipping && mark ? <>
+                    <Animated.View style={[styles.tile, styles.tileFace, styles.filled, { transform: [{ perspective: 800 }, { rotateX: flips[col].interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] }) }] }]}>
+                      {letterText}
+                    </Animated.View>
+                    <Animated.View style={[styles.tile, styles.tileFace, { backgroundColor: colors[mark], borderColor: colors[mark], transform: [{ perspective: 800 }, { rotateX: flips[col].interpolate({ inputRange: [0, 1], outputRange: ['180deg', '360deg'] }) }] }]}>
+                      {letterText}
+                    </Animated.View>
+                  </> : <View style={[styles.tile, styles.tileFace, letter && !mark ? styles.filled : null, mark && { backgroundColor: colors[mark], borderColor: colors[mark] }]}>
+                    {letterText}
+                  </View>}
                 </View>;
               })}
             </View>;
@@ -71,12 +118,18 @@ function Round({ length, answer, onReplay }: { length: WordLength; answer: strin
           <Pressable accessibilityRole="button" onPress={goHome} style={styles.return}><Text style={styles.homeText}>Back to home</Text></Pressable>
         </View> : <>
           <View style={styles.messageBox}><Text accessibilityLiveRegion="polite" style={styles.message}>{game.message || 'Take your time. You’ve got this.'}</Text></View>
-          <View style={styles.keyboard}>
-            {rows.map((row, i) => <View key={i} style={[styles.keyRow, i === 1 && { paddingHorizontal: 14 }]}>
-              {row.map(key => <Pressable key={key} accessibilityRole="button" accessibilityLabel={`${key === 'DELETE' ? 'Delete letter' : key === 'ENTER' ? 'Submit guess' : key}${marks[key] ? `, ${marks[key]}` : ''}`} onPress={() => dispatch(key)} style={({ pressed }) => [styles.key, key.length > 1 && styles.wideKey, marks[key] && { backgroundColor: colors[marks[key]] }, pressed && { opacity: 0.6 }]}>
+          <View style={styles.keyboard} onLayout={e => setKeyboardWidth(e.nativeEvent.layout.width)}>
+            {rows.map((row, i) => {
+              const inset = i === 1 ? 14 : 0;
+              const totalWeight = row.reduce((total, key) => total + (key.length > 1 ? 1.65 : 1), 0);
+              const unitWidth = Math.max(0, keyboardWidth - inset * 2 - 4 * (row.length - 1)) / totalWeight;
+              return <View key={i} style={[styles.keyRow, { paddingHorizontal: inset }]}>
+
+              {row.map(key => <Pressable key={key} accessibilityRole="button" accessibilityLabel={`${key === 'DELETE' ? 'Delete letter' : key === 'ENTER' ? 'Submit guess' : key}${marks[key] ? `, ${marks[key]}` : ''}`} disabled={isRevealing} accessibilityState={{ disabled: isRevealing }} onPress={() => handleKey(key)} style={({ pressed }) => [styles.key, key.length > 1 && styles.wideKey, keyboardWidth > 0 && { flex: 0, width: unitWidth * (key.length > 1 ? 1.65 : 1) }, marks[key] && { backgroundColor: colors[marks[key]] }, pressed && { opacity: 0.6 }]}>
                 <Text maxFontSizeMultiplier={1.2} style={[styles.keyText, key.length > 1 && { fontSize: 10 }]}>{key === 'DELETE' ? '⌫' : key}</Text>
               </Pressable>)}
-            </View>)}
+            </View>;
+            })}
           </View>
         </>}
         <View style={styles.legend}>
@@ -99,13 +152,14 @@ const styles = StyleSheet.create({
   board: { flex: 1, minHeight: 189, justifyContent: 'center', alignItems: 'center', gap: 5, paddingVertical: 12 },
   gridRow: { flexDirection: 'row', gap: 5 },
   tile: { borderWidth: 1.5, borderColor: colors.border, borderRadius: 5, justifyContent: 'center', alignItems: 'center' },
+  tileFace: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backfaceVisibility: 'hidden' },
   filled: { borderColor: colors.muted, backgroundColor: colors.surface },
-  letter: { color: colors.text, fontWeight: '800' },
+  letter: { color: colors.text, fontWeight: '800', width: '100%', textAlign: 'center' },
   messageBox: { minHeight: 42, justifyContent: 'center', paddingHorizontal: 12 },
   message: { color: colors.muted, textAlign: 'center', fontSize: 12 },
   keyboard: { gap: 7 },
-  keyRow: { flexDirection: 'row', gap: 4 },
-  key: { flex: 1, height: 52, backgroundColor: colors.key, borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
+  keyRow: { width: '100%', flexDirection: 'row', gap: 4 },
+  key: { flex: 1, minWidth: 0, height: 52, backgroundColor: colors.key, borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
   wideKey: { flex: 1.65 },
   keyText: { color: colors.text, fontSize: 15, fontWeight: '700' },
   legend: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 14, paddingTop: 16 },

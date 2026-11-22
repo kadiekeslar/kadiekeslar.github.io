@@ -28,10 +28,39 @@ assert.equal(game.status, 'won');
 assert.equal(game.guesses.length, 1);
 assert.equal(enterKey(game, 'A'), game);
 game = newGame('APPLE');
-for (let i = 0; i < 6; i++) game = guess(game, 'BEACH');
+game = guess(game, 'BEACH');
+const firstGuesses = game.guesses;
+game = guess(game, 'BEACH');
+assert.equal(game.guesses, firstGuesses);
+assert.equal(game.guesses.length, 1);
+assert.equal(game.current, 'BEACH');
+assert.equal(game.status, 'playing');
+assert.match(game.message, /already used that word/);
+for (let i = 0; i < 5; i++) game = enterKey(game, 'DELETE');
+for (const word of ['TRAIN', 'CLOUD', 'STONE', 'FRUIT', 'GHOST']) game = guess(game, word);
 assert.equal(game.status, 'lost');
 assert.equal(game.guesses.length, 6);
 assert.equal(enterKey(game, 'ENTER'), game);
+assert.equal(guess(newGame('APPLE'), 'BEACH').guesses.length, 1);
+for (const letter of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
+  for (const length of LENGTHS) {
+    let typing = newGame('A'.repeat(length));
+    for (let position = 0; position < length; position++) {
+      typing = enterKey(typing, letter);
+      assert.equal(typing.current, letter.repeat(position + 1));
+      assert.equal(typing.current[position], letter);
+    }
+    assert.equal(enterKey(typing, letter), typing, 'A full row must ignore extra letters');
+    for (let remaining = length - 1; remaining >= 0; remaining--) {
+      typing = enterKey(typing, 'DELETE');
+      assert.equal(typing.current, letter.repeat(remaining));
+    }
+  }
+  const word = Object.values(answers).flat().find(word => word.includes(letter.toLowerCase())).toUpperCase();
+  const submitted = guess(newGame(word), word);
+  assert.equal(submitted.guesses[0].word, word);
+  assert.equal(submitted.status, 'won');
+}
 const keys = keyboardMarks([{ word: 'AA', marks: ['correct', 'absent'] }, { word: 'A', marks: ['present'] }]);
 assert.equal(keys.A, 'correct');
 for (const length of LENGTHS) {
@@ -50,4 +79,4 @@ for (const length of LENGTHS) {
 assert.ok(isWord('TRAIN'));
 assert.ok(isWord('gardens'));
 assert.ok(!isWord('asdfghjk'));
-console.log('Game checks passed: repeated letters, validation, deletion, wins, losses, keyboard priority, all word lengths, and replay.');
+console.log('Game checks passed: repeated letters, duplicate guesses, all 26 letter inputs, validation, deletion, wins, losses, keyboard priority, all word lengths, and replay.');

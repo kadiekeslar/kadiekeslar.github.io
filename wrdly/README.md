@@ -2,7 +2,7 @@
 
 An unlimited, English-only word game built with the existing Expo SDK 58 project, React Native, TypeScript, and Expo Router.
 
-Choose a word length from 4–8, then solve the word in six guesses. Green means the right position, yellow means a different position, and gray means no remaining occurrence of that letter. The keyboard keeps the strongest clue for each letter. Invalid words and incomplete guesses do not use a turn.
+Choose a word length from 4–8, then solve the word in six guesses. Green means the right position, yellow means a different position, and gray means no remaining occurrence of that letter. The keyboard keeps the strongest clue for each letter. Invalid words, incomplete guesses, and words already guessed in the current round do not use a turn. Accepted guesses flip one tile at a time from left to right; input stays locked until the reveal finishes, then keyboard colors update.
 
 ## Try it on your phone
 
@@ -37,7 +37,7 @@ npx expo-doctor
 npx expo export --platform ios --platform android --platform web
 ```
 
-On your phone, try each word length, delete a letter, submit a short guess, and submit a made-up word. Check that only valid guesses consume turns. Complete a round, return home, close and reopen Expo Go, and confirm the played and won totals remain. Try both a win and six unsuccessful valid guesses, then use **Play again**.
+On your phone, try each word length, delete a letter, submit a short guess, and submit a made-up word. Check that only new, valid guesses consume turns. Submit the same valid word twice and confirm “You already used that word” appears without reducing the remaining guesses. Check that all 26 keyboard letters, especially I, are visible and respond on a narrow screen. During a reveal, tap letters, Delete, and Enter; they should do nothing until the final tile finishes, and keyboard colors should update only afterward. Repeat with 4- and 8-letter words, and check the final reveal before a win or loss. Complete a round, return home, close and reopen Expo Go, and confirm the played and won totals remain. Try both a win and six unsuccessful valid guesses, then use **Play again**.
 
 ## Code
 

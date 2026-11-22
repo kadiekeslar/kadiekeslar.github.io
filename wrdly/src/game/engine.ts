@@ -31,6 +31,7 @@ export function enterKey(game: Game, key: string): Game {
       ? { ...game, current: game.current + key, message: '' } : game;
   }
   if (game.current.length !== game.answer.length) return { ...game, message: `Enter ${game.answer.length} letters.` };
+  if (game.guesses.some(guess => guess.word === game.current)) return { ...game, message: 'You already used that word. Try another word.' };
   if (!isWord(game.current)) return { ...game, message: 'Not in the English word list. Try another word.' };
   const guesses = [...game.guesses, { word: game.current, marks: scoreGuess(game.current, game.answer) }];
   const status = game.current === game.answer ? 'won' : guesses.length === MAX_GUESSES ? 'lost' : 'playing';
