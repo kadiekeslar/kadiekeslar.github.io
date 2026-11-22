@@ -41,7 +41,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "node scripts/test-game.cjs",
+    "test": "node scripts/test-game.cjs && node scripts/test-regressions.cjs",
     "typecheck": "tsc --noEmit"
   },
   "private": true

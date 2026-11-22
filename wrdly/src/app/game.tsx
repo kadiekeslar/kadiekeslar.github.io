@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { enterKey, keyboardMarks, MAX_GUESSES, newGame } from '@/game/engine';
 import { colors } from '@/game/theme';
 import { chooseWord, LENGTHS, type WordLength } from '@/game/words';
-import { useStats } from '@/state/stats';
+import { StatsSaveStatus, useStats } from '@/state/stats';
 
 const rows = ['QWERTYUIOP'.split(''), 'ASDFGHJKL'.split(''), ['ENTER', ...'ZXCVBNM'.split(''), 'DELETE']];
 
@@ -13,6 +13,10 @@ export default function GameScreen() {
   const params = useLocalSearchParams<{ length?: string }>();
   const parsed = Number(params.length);
   const length = (LENGTHS.includes(parsed as WordLength) ? parsed : 5) as WordLength;
+  return <GameForLength key={length} length={length} />;
+}
+
+function GameForLength({ length }: { length: WordLength }) {
   const [round, setRound] = useState(() => ({ id: 0, answer: chooseWord(length) }));
   return <Round key={`${length}-${round.id}`} length={length} answer={round.answer} onReplay={() => setRound(old => ({ id: old.id + 1, answer: chooseWord(length, old.answer) }))} />;
 }
@@ -22,11 +26,8 @@ function Round({ length, answer, onReplay }: { length: WordLength; answer: strin
   const [revealingRow, setRevealingRow] = useState<number | null>(null);
   const inputLocked = useRef(false);
   const [flips] = useState(() => Array.from({ length }, () => new Animated.Value(0)));
-  const [keyboardWidth, setKeyboardWidth] = useState(0);
   const [gameId] = useState(() => `${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const [board, setBoard] = useState({ width: 320, height: 330 });
-  const [saveState, setSaveState] = useState<'saving' | 'saved' | 'error'>('saving');
-  const [retry, setRetry] = useState(0);
   const { recordResult } = useStats();
   const isRevealing = revealingRow !== null;
   const finished = game.status !== 'playing' && !isRevealing;
@@ -66,13 +67,8 @@ function Round({ length, answer, onReplay }: { length: WordLength; answer: strin
 
   useEffect(() => {
     if (game.status === 'playing') return;
-    let active = true;
-    recordResult(gameId, game.status === 'won').then(
-      () => { if (active) setSaveState('saved'); },
-      () => { if (active) setSaveState('error'); },
-    );
-    return () => { active = false; };
-  }, [game.status, gameId, recordResult, retry]);
+    void recordResult(gameId, game.status === 'won').catch(() => {});
+  }, [game.status, gameId, recordResult]);
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -113,20 +109,18 @@ function Round({ length, answer, onReplay }: { length: WordLength; answer: strin
         {finished ? <View style={styles.result} accessibilityLiveRegion="polite">
           <Text accessibilityRole="header" style={styles.resultTitle}>{game.status === 'won' ? 'Beautifully done!' : 'That was a tricky one.'}</Text>
           <Text style={styles.resultText}>{game.status === 'won' ? `You found ${answer} in ${game.guesses.length} ${game.guesses.length === 1 ? 'guess' : 'guesses'}.` : `The word was ${answer}.`}</Text>
-          {saveState === 'error' ? <Pressable accessibilityRole="button" onPress={() => { setSaveState('saving'); setRetry(n => n + 1); }}><Text style={styles.saveError}>Couldn’t save stats. Tap to retry.</Text></Pressable> : <Text style={styles.saved}>{saveState === 'saved' ? 'Your stats are saved.' : 'Saving your stats…'}</Text>}
-          <Pressable accessibilityRole="button" disabled={saveState !== 'saved'} onPress={onReplay} style={[styles.play, saveState !== 'saved' && { opacity: 0.5 }]}><Text style={styles.playText}>Play again  →</Text></Pressable>
+          <StatsSaveStatus />
+          <Pressable accessibilityRole="button" onPress={onReplay} style={styles.play}><Text style={styles.playText}>Play again  →</Text></Pressable>
           <Pressable accessibilityRole="button" onPress={goHome} style={styles.return}><Text style={styles.homeText}>Back to home</Text></Pressable>
         </View> : <>
           <View style={styles.messageBox}><Text accessibilityLiveRegion="polite" style={styles.message}>{game.message || 'Take your time. You’ve got this.'}</Text></View>
-          <View style={styles.keyboard} onLayout={e => setKeyboardWidth(e.nativeEvent.layout.width)}>
+          <View style={styles.keyboard}>
             {rows.map((row, i) => {
               const inset = i === 1 ? 14 : 0;
-              const totalWeight = row.reduce((total, key) => total + (key.length > 1 ? 1.65 : 1), 0);
-              const unitWidth = Math.max(0, keyboardWidth - inset * 2 - 4 * (row.length - 1)) / totalWeight;
               return <View key={i} style={[styles.keyRow, { paddingHorizontal: inset }]}>
 
-              {row.map(key => <Pressable key={key} accessibilityRole="button" accessibilityLabel={`${key === 'DELETE' ? 'Delete letter' : key === 'ENTER' ? 'Submit guess' : key}${marks[key] ? `, ${marks[key]}` : ''}`} disabled={isRevealing} accessibilityState={{ disabled: isRevealing }} onPress={() => handleKey(key)} style={({ pressed }) => [styles.key, key.length > 1 && styles.wideKey, keyboardWidth > 0 && { flex: 0, width: unitWidth * (key.length > 1 ? 1.65 : 1) }, marks[key] && { backgroundColor: colors[marks[key]] }, pressed && { opacity: 0.6 }]}>
-                <Text maxFontSizeMultiplier={1.2} style={[styles.keyText, key.length > 1 && { fontSize: 10 }]}>{key === 'DELETE' ? '⌫' : key}</Text>
+              {row.map(key => <Pressable key={key} accessibilityRole="button" accessibilityLabel={`${key === 'DELETE' ? 'Delete letter' : key === 'ENTER' ? 'Submit guess' : key}${marks[key] ? `, ${marks[key]}` : ''}`} disabled={isRevealing} accessibilityState={{ disabled: isRevealing }} hitSlop={{ left: 1, right: 1 }} onPress={() => handleKey(key)} style={({ pressed }) => [styles.key, key.length > 1 && styles.wideKey, marks[key] && { backgroundColor: colors[marks[key]] }, pressed && { opacity: 0.6 }]}>
+                <Text numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={1.2} style={[styles.keyText, key.length > 1 && { fontSize: 10 }]}>{key === 'DELETE' ? '⌫' : key}</Text>
               </Pressable>)}
             </View>;
             })}
@@ -157,11 +151,11 @@ const styles = StyleSheet.create({
   letter: { color: colors.text, fontWeight: '800', width: '100%', textAlign: 'center' },
   messageBox: { minHeight: 42, justifyContent: 'center', paddingHorizontal: 12 },
   message: { color: colors.muted, textAlign: 'center', fontSize: 12 },
-  keyboard: { gap: 7 },
-  keyRow: { width: '100%', flexDirection: 'row', gap: 4 },
+  keyboard: { gap: 7, marginHorizontal: -8 },
+  keyRow: { width: '100%', flexDirection: 'row', gap: 2 },
   key: { flex: 1, minWidth: 0, height: 52, backgroundColor: colors.key, borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
   wideKey: { flex: 1.65 },
-  keyText: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  keyText: { color: colors.text, fontSize: 15, fontWeight: '700', width: '100%', textAlign: 'center' },
   legend: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 14, paddingTop: 16 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   dot: { width: 9, height: 9, borderRadius: 3 },
@@ -169,8 +163,6 @@ const styles = StyleSheet.create({
   result: { backgroundColor: colors.surface, padding: 16, borderRadius: 16, alignItems: 'center', gap: 8, marginTop: 8 },
   resultTitle: { color: colors.green, fontSize: 23, fontWeight: '800', textAlign: 'center' },
   resultText: { color: colors.text, fontSize: 14, textAlign: 'center' },
-  saved: { color: colors.muted, fontSize: 11 },
-  saveError: { color: '#F0CD77', fontSize: 13, padding: 8 },
   play: { backgroundColor: colors.green, borderRadius: 10, minHeight: 50, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center', marginTop: 4 },
   playText: { color: colors.background, fontSize: 16, fontWeight: '800' },
   return: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 20 },

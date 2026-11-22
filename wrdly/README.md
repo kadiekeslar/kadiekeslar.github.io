@@ -25,7 +25,7 @@ If your network blocks the connection, stop the server and try `npx expo start -
 
 Completed rounds count as played; completed wins also count as won. Leaving an unfinished round does not count as a loss. Statistics are stored locally with AsyncStorage, with no account or server. The home screen also shows the win percentage. Wait for “Your stats are saved” before closing the app after a result. Unfinished boards are not saved.
 
-A failed save offers a retry and prevents starting another round until the result is saved. Replaying picks a different answer from the previous round. There is no daily limit, language menu, or network requirement for gameplay.
+A failed save keeps completed results in memory and offers a retry on both the result and home screens. You can return home or play another round; the next save includes all pending games and wins without counting retries twice. Pending results cannot survive closing the app while storage is still failing, so wait for the saved confirmation before closing. Unreadable statistics reset to zero with a notice so the game remains usable; storage read errors offer a retry without overwriting saved data. Replaying picks a different answer from the previous round. There is no daily limit, language menu, or network requirement for gameplay.
 
 ## Checks
 

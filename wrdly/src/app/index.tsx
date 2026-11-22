@@ -4,11 +4,11 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/game/theme';
 import { LENGTHS, type WordLength } from '@/game/words';
-import { useStats } from '@/state/stats';
+import { StatsSaveStatus, useStats } from '@/state/stats';
 
 export default function HomeScreen() {
   const [length, setLength] = useState<WordLength>(5);
-  const { stats } = useStats();
+  const { stats, saveState, recovered } = useStats();
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -36,6 +36,7 @@ export default function HomeScreen() {
           <View style={styles.divider} />
           <View style={styles.stat}><Text style={styles.statValue}>{stats.played ? Math.round(stats.won / stats.played * 100) : 0}%</Text><Text style={styles.statLabel}>WIN RATE</Text></View>
         </View>
+        {(saveState !== 'saved' || recovered) && <StatsSaveStatus />}
         <Text style={styles.footer}>A fresh start is always one word away.</Text>
       </ScrollView>
     </SafeAreaView>
