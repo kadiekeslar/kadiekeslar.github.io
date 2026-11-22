@@ -1,56 +1,51 @@
-# Welcome to your Expo app 👋
+# wrdly
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+An unlimited, English-only word game built with the existing Expo SDK 58 project, React Native, TypeScript, and Expo Router.
 
-## Get started
+Choose a word length from 4–8, then solve the word in six guesses. Green means the right position, yellow means a different position, and gray means no remaining occurrence of that letter. The keyboard keeps the strongest clue for each letter. Invalid words and incomplete guesses do not use a turn.
 
-1. Install dependencies
+## Try it on your phone
 
-   ```bash
+1. Install Expo Go on your iPhone or Android phone. Use a version that supports SDK 58.
+2. In a terminal, open this project and run:
+
+   ```sh
+   cd /Users/kadiekeslar/Desktop/15113/wrdly
    npm install
-   ```
-
-2. Start the app
-
-   ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+3. Connect the computer and phone to the same Wi-Fi network.
+4. Scan the terminal QR code with the iPhone Camera app, or with Expo Go on Android.
+5. Select a length and tap **Let’s play**.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+If your network blocks the connection, stop the server and try `npx expo start --tunnel` instead. For a browser preview, run `npm run web`.
 
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Saved statistics
 
-## Get a fresh project
+Completed rounds count as played; completed wins also count as won. Leaving an unfinished round does not count as a loss. Statistics are stored locally with AsyncStorage, with no account or server. The home screen also shows the win percentage. Wait for “Your stats are saved” before closing the app after a result. Unfinished boards are not saved.
 
-When you're ready, run:
+A failed save offers a retry and prevents starting another round until the result is saved. Replaying picks a different answer from the previous round. There is no daily limit, language menu, or network requirement for gameplay.
 
-```bash
-npm run reset-project
+## Checks
+
+```sh
+npm test
+npm run typecheck
+npm run lint
+npx expo-doctor
+npx expo export --platform ios --platform android --platform web
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+On your phone, try each word length, delete a letter, submit a short guess, and submit a made-up word. Check that only valid guesses consume turns. Complete a round, return home, close and reopen Expo Go, and confirm the played and won totals remain. Try both a win and six unsuccessful valid guesses, then use **Play again**.
 
-### Other setup steps
+## Code
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+- `src/app/index.tsx`: home, length selection, and statistics.
+- `src/app/game.tsx`: responsive game grid, keyboard, and results.
+- `src/game/engine.ts`: guess validation, repeated-letter scoring, and round rules.
+- `src/game/words.ts`: familiar answer pools and offline dictionary lookup.
+- `src/state/stats.tsx`: loading and serialized, duplicate-safe statistics writes.
+- `scripts/test-game.cjs`: game logic checks using the existing TypeScript dependency.
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+The bundled dictionary contains 114,111 alphabetic 4–8 letter entries from [sindresorhus/word-list](https://github.com/sindresorhus/word-list), based on the English Word Game dictionary (ENABLE). Like any fixed dictionary, it may omit newer or specialized terms. Answers come from a separate curated pool of familiar English words. The dictionary license is included in `src/data/WORD-LIST-LICENSE.txt`.
